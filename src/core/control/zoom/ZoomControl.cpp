@@ -13,6 +13,7 @@
 #include "gui/MainWindow.h"
 #include "gui/PageView.h"               // for XojPageView
 #include "gui/XournalView.h"            // for XournalView
+#include "gui/scroll/ScrollHandling.h"  // for ScrollHandling
 #include "util/Assert.h"                // for xoj_assert
 #include "util/Util.h"                  // for execInUiThread
 #include "util/gdk4_helper.h"           // for gdk_event_get_modifier_state
@@ -34,8 +35,9 @@ auto onScrolledwindowMainScrollEvent(GtkWidget* widget, GdkEventScroll* event, Z
                 (event->direction == GDK_SCROLL_UP || (event->direction == GDK_SCROLL_SMOOTH && event->delta_y < 0)) ?
                         ZOOM_IN :
                         ZOOM_OUT;
-        // translate absolute window coordinates to the widget-local coordinates and start zooming
-        zoom->zoomScroll(direction, Util::toWidgetCoords(widget, xoj::util::Point{event->x_root, event->y_root}));
+        xoj::util::Point<double> center;
+        gdk_event_get_coords((GdkEvent*)event, &center.x, &center.y);
+        zoom->zoomScroll(direction, center);
         return true;
     }
 
@@ -46,13 +48,15 @@ auto onScrolledwindowMainScrollEvent(GtkWidget* widget, GdkEventScroll* event, Z
 auto onTouchpadPinchEvent(GtkWidget* widget, GdkEventTouchpadPinch* event, ZoomControl* zoom) -> bool {
     if (event->type == GDK_TOUCHPAD_PINCH && event->n_fingers == 2) {
         switch (event->phase) {
-            case GDK_TOUCHPAD_GESTURE_PHASE_BEGIN:
+            case GDK_TOUCHPAD_GESTURE_PHASE_BEGIN: {
                 if (zoom->isZoomFitMode()) {
                     zoom->setZoomFitMode(false);
                 }
-                // translate absolute window coordinates to the widget-local coordinates and start zooming
-                zoom->startZoomSequence(Util::toWidgetCoords(widget, xoj::util::Point{event->x_root, event->y_root}));
+                xoj::util::Point<double> center;
+                gdk_event_get_coords((GdkEvent*)event, &center.x, &center.y);
+                zoom->startZoomSequence(center);
                 break;
+            }
             case GDK_TOUCHPAD_GESTURE_PHASE_UPDATE:
                 zoom->zoomSequenceChange(event->scale, true);
                 break;
@@ -64,39 +68,6 @@ auto onTouchpadPinchEvent(GtkWidget* widget, GdkEventTouchpadPinch* event, ZoomC
                 break;
         }
         return true;
-    }
-    return false;
-}
-
-
-// Todo: try to connect this function with the "expose_event", it would be way cleaner and we dont need to align/layout
-//       the pages manually, but it only works with the top Widget (GtkWindow) for now this works "fine"
-//       see https://stackoverflow.com/questions/1060039/gtk-detecting-window-resize-from-the-user
-auto onWindowSizeChangedEvent(GtkWidget* widget, GdkEvent* event, ZoomControl* zoom) -> bool {
-    xoj_assert(widget != zoom->view->getWidget());
-    auto layout = zoom->view->getLayout();
-    // Todo (fabian): The following code is a hack.
-    //    Problem size-allocate:
-    //    when using the size-allocate signal, we cant use layout->recalculate() directly.
-    //    But using the xournal-widgets allocation is wrong, since the calculation is skipped already.
-    //    using size-allocate's allocation is wrong, since it is the alloc of the toplevel.
-    //    Problem expose-event:
-    //    when using the expose-event signal, the new Allocation is not known yet; calculation must be deferred.
-    //    (minimize / maximize wont work)
-    Util::execInUiThread([layout, zoom]() {
-        zoom->updateZoomPresentationValue();
-        zoom->updateZoomFitValue();
-        layout->recalculate();
-    });
-
-    GdkWindow* gdkWindow = gtk_widget_get_window(widget);
-    GdkDisplay* display = gdkWindow ? gdk_window_get_display(gdkWindow) : nullptr;
-    GdkMonitor* monitor = display ? gdk_display_get_monitor_at_window(display, gdkWindow) : nullptr;
-    if (monitor && monitor != zoom->lastMonitor) {
-        zoom->lastMonitor = monitor;
-        const char* monitorName = gdk_monitor_get_model(monitor);
-        g_debug("Window moved to monitor \"%s\"", monitorName);
-        zoom->control->getWindow()->setDPI();
     }
     return false;
 }
@@ -158,23 +129,20 @@ void ZoomControl::startZoomSequence(xoj::util::Point<double> zoomCenter) {
     this->zoomWidgetPos = zoomCenter;  // widget space coordinates of the zoomCenter!
     this->zoomSequenceStart = this->zoom;
 
-    // * set unscaledPixels padding value
-    size_t currentPageIdx = this->view->getCurrentPage();
+    auto rect = getVisibleRect();
+    auto view_pos = xoj::util::Point{rect.x, rect.y};
 
+    // Not everything changes size as we zoom in/out: the padding remains constant
+    auto fixedPadding = view->getLayout()->getFixedPaddingBeforePoint(view_pos + this->zoomWidgetPos);
+    this->unscaledPixels = {static_cast<double>(fixedPadding.x), static_cast<double>(fixedPadding.y)};
 
-    // Not everything changes size as we zoom in/out. The padding, for example,
-    // remains constant! (changed when page changes, but the error stays small enough)
-    Layout* layout = view->getLayout();
-    this->unscaledPixels = {static_cast<double>(layout->getPaddingLeftOfPage(currentPageIdx)),
-                            static_cast<double>(layout->getPaddingAbovePage(currentPageIdx))};
+    // Except the padding added to center the page when zoomed out
+    auto centeringPadding = view->getLayout()->getCenteringPadding();
 
-    // * set initial scrollPosition value
-    auto const& rect = getVisibleRect();
-    auto const& view_pos = xoj::util::Point{rect.x, rect.y};
-
-    // Use this->zoomWidgetPos to zoom into a location other than the top-left (e.g. where
-    // the user pinched).
-    this->scrollPosition = (view_pos + this->zoomWidgetPos - this->unscaledPixels) / this->zoom;
+    // Use this->zoomWidgetPos to zoom into a location other than the top-left (e.g. where the user pinched).
+    this->scrollPosition = (view_pos + this->zoomWidgetPos - this->unscaledPixels -
+                            xoj::util::Point<double>(centeringPadding.x, centeringPadding.y)) /
+                           this->zoom;
 }
 
 void ZoomControl::zoomSequenceChange(double zoom, bool relative) {
@@ -230,7 +198,9 @@ auto ZoomControl::getScrollPositionAfterZoom() const -> xoj::util::Point<double>
         return {0, 0};
     }
 
-    return this->scrollPosition * this->zoom - this->zoomWidgetPos + this->unscaledPixels;
+    auto centeringPadding = view->getLayout()->getCenteringPadding();
+    return this->scrollPosition * this->zoom - this->zoomWidgetPos + this->unscaledPixels +
+           xoj::util::Point<double>(centeringPadding.x, centeringPadding.y);
 }
 
 void ZoomControl::addZoomListener(ZoomListener* l) { this->listener.emplace_back(l); }
@@ -247,7 +217,18 @@ void ZoomControl::initZoomHandler(GtkWidget* window, GtkWidget* widget, XournalV
     gtk_widget_add_events(widget, GDK_TOUCHPAD_GESTURE_MASK);
     g_signal_connect(widget, "scroll-event", xoj::util::wrap_for_g_callback_v<onScrolledwindowMainScrollEvent>, this);
     g_signal_connect(widget, "event", xoj::util::wrap_for_g_callback_v<onTouchpadPinchEvent>, this);
-    g_signal_connect(window, "configure-event", xoj::util::wrap_for_g_callback_v<onWindowSizeChangedEvent>, this);
+    g_signal_connect(v->getScrollHandling()->getHorizontal(), "notify::page-size",
+                     G_CALLBACK(+[](GObject*, GParamSpec*, gpointer self) {
+                         static_cast<ZoomControl*>(self)->updateZoomFitValue();
+                         static_cast<ZoomControl*>(self)->updateZoomPresentationValue();
+                     }),
+                     this);
+    g_signal_connect(v->getScrollHandling()->getVertical(), "notify::page-size",
+                     G_CALLBACK(+[](GObject*, GParamSpec*, gpointer self) {
+                         static_cast<ZoomControl*>(self)->updateZoomPresentationValue();
+                     }),
+                     this);
+
     registerListener(this->control);
 }
 
@@ -310,8 +291,10 @@ auto ZoomControl::getZoomFitValue() const -> double { return this->zoomFitValue;
 auto ZoomControl::updateZoomPresentationValue(size_t pageNo) -> bool {
     XojPageView* page = view->getViewFor(view->getCurrentPage());
     if (!page) {
-        g_warning("Cannot update zoomPresentationValue yet. This should only happen on startup! ");
-        return true;
+        if (!view->getViewPages().empty()) {
+            g_warning("Cannot update zoomPresentationValue: no page view for the current page.");
+        }
+        return false;
     }
 
     Rectangle widget_rect = getVisibleRect();

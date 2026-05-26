@@ -37,7 +37,8 @@
 #include "filesystem.h"  // for path
 
 
-PageBackgroundChangeController::PageBackgroundChangeController(Control* control): control(control) {
+PageBackgroundChangeController::PageBackgroundChangeController(Control* control):
+        control(control), pageTypeForNewPages(control->getSettings()->getPageTemplateSettings().getPageInsertType()) {
     registerListener(control);
 }
 
@@ -301,16 +302,21 @@ void PageBackgroundChangeController::copyBackgroundFromOtherPage(PageRef target,
     }
 }
 
-void PageBackgroundChangeController::insertNewPage(size_t position, bool shouldScrollToPage) {
-    control->clearSelectionEndText();
+void PageBackgroundChangeController::insertNewPage(size_t position, bool automatedInsertion) {
+    if (automatedInsertion) {
+        if (pageTypeForNewPages && (pageTypeForNewPages->isImagePage() || pageTypeForNewPages->isPdfPage())) {
+            // Do not insert image or pdf pages automatically
+            return;
+        }
+    } else {
+        // If the user acted to get the page create, the selection should be dropped
+        control->clearSelectionEndText();
+    }
 
     Document* doc = control->getDocument();
     if (position > doc->getPageCount()) {
         position = doc->getPageCount();
     }
-
-    PageTemplateSettings model;
-    model.parse(control->getSettings()->getPageTemplate());
 
     PageRef current = control->getCurrentPage();
     xoj_assert(current);
@@ -324,7 +330,7 @@ void PageBackgroundChangeController::insertNewPage(size_t position, bool shouldS
     }
     auto page = std::make_shared<XojPage>(width, height);
 
-    auto afterConfigured = [position, shouldScrollToPage, ctrl = this->control](PageRef page) {
+    auto afterConfigured = [position, shouldScrollToPage = !automatedInsertion, ctrl = this->control](PageRef page) {
         ctrl->insertPage(page, position, shouldScrollToPage);
     };
 
@@ -346,6 +352,7 @@ void PageBackgroundChangeController::insertNewPage(size_t position, bool shouldS
         page->setBackgroundType(pageTypeForNewPages.value());
 
         // Set background Color
+        const auto& model = control->getSettings()->getPageTemplateSettings();
         page->setBackgroundColor(model.getBackgroundColor());
 
         afterConfigured(std::move(page));

@@ -209,6 +209,8 @@ void SettingsDialog::initMouseButtonEvents(GladeSearchpath* gladeSearchPath) {
     emplaceButton("hboxLeftMouse", BUTTON_MOUSE_LEFT);
     emplaceButton("hboxMiddleMouse", BUTTON_MOUSE_MIDDLE);
     emplaceButton("hboxRightMouse", BUTTON_MOUSE_RIGHT);
+    emplaceButton("hboxMouse4", BUTTON_MOUSE_4);
+    emplaceButton("hboxMouse5", BUTTON_MOUSE_5);
     emplaceButton("hboxEraser", BUTTON_ERASER);
     emplaceButton("hboxTouch", BUTTON_TOUCH, true);
     emplaceButton("hboxPenButton1", BUTTON_STYLUS_ONE);
@@ -348,6 +350,7 @@ void SettingsDialog::load() {
     loadCheckbox("cbSnapRecognizedShapesEnabled", settings->getSnapRecognizedShapesEnabled());
     loadCheckbox("cbRestoreLineWidthEnabled", settings->getRestoreLineWidthEnabled());
     loadCheckbox("cbStockIcons", settings->areStockIconsUsed());
+    loadCheckbox("cbShowPageShadow", settings->isShowPageShadow());
     loadCheckbox("cbHideHorizontalScrollbar", settings->getScrollbarHideType() & SCROLLBAR_HIDE_HORIZONTAL);
     loadCheckbox("cbHideVerticalScrollbar", settings->getScrollbarHideType() & SCROLLBAR_HIDE_VERTICAL);
     loadCheckbox("cbDisableScrollbarFadeout", settings->isScrollbarFadeoutDisabled());
@@ -753,6 +756,7 @@ void SettingsDialog::save() {
     settings->setSnapRecognizedShapesEnabled(getCheckbox("cbSnapRecognizedShapesEnabled"));
     settings->setRestoreLineWidthEnabled(getCheckbox("cbRestoreLineWidthEnabled"));
     settings->setAreStockIconsUsed(getCheckbox("cbStockIcons"));
+    settings->setShowPageShadow(getCheckbox("cbShowPageShadow"));
     settings->setPressureGuessingEnabled(getCheckbox("cbEnablePressureInference"));
     settings->setTouchDrawingEnabled(getCheckbox("cbTouchDrawing"));
     settings->setGtkTouchInertialScrollingEnabled(!getCheckbox("cbDisableGtkInertialScroll"));

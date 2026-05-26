@@ -4,6 +4,7 @@
 
 #include <glib.h>  // for g_error
 
+#include "control/NavigationHistory.h"    // for NavigationHistory
 #include "control/zoom/ZoomControl.h"     // for ZoomControl
 #include "gui/MainWindow.h"               // for MainWindow
 #include "gui/XournalView.h"              // for XournalView
@@ -34,12 +35,19 @@ void ScrollHandler::goToNextPage() {
 
 void ScrollHandler::goToLastPage() {
     if (this->control->getWindow()) {
-        scrollToPage(this->control->getDocument()->getPageCount() - 1);
+        size_t lastPage = this->control->getDocument()->getPageCount() - 1;
+        if (this->control->getCurrentPageNo() != lastPage) {
+            this->control->getNavigationHistory()->recordNavPoint();
+        }
+        scrollToPage(lastPage);
     }
 }
 
 void ScrollHandler::goToFirstPage() {
     if (this->control->getWindow()) {
+        if (this->control->getCurrentPageNo() != 0) {
+            this->control->getNavigationHistory()->recordNavPoint();
+        }
         scrollToPage(0);
     }
 }
@@ -47,9 +55,9 @@ void ScrollHandler::goToFirstPage() {
 void ScrollHandler::scrollToPage(const PageRef& page, XojPdfRectangle rect) {
     Document* doc = this->control->getDocument();
 
-    doc->lock();
+    doc->lock_shared();
     auto p = doc->indexOf(page);
-    doc->unlock();
+    doc->unlock_shared();
 
     if (p != npos) {
         scrollToPage(p, rect);
@@ -66,23 +74,40 @@ void ScrollHandler::scrollToPage(size_t page, XojPdfRectangle rect) {
     win->getXournal()->scrollTo(page, rect);
 }
 
+void ScrollHandler::jumpToPage(const PageRef& page, XojPdfRectangle rect) {
+    Document* doc = this->control->getDocument();
+
+    doc->lock_shared();
+    auto p = doc->indexOf(page);
+    doc->unlock_shared();
+
+    if (p != npos) {
+        jumpToPage(p, rect);
+    }
+}
+
+void ScrollHandler::jumpToPage(size_t page, XojPdfRectangle rect) {
+    this->control->getNavigationHistory()->recordNavPoint();
+    scrollToPage(page, rect);
+}
+
 void ScrollHandler::scrollToLinkDest(const LinkDestination& dest) {
     size_t pdfPage = dest.getPdfPage();
 
     if (pdfPage != npos) {
         Document* doc = control->getDocument();
-        doc->lock();
+        doc->lock_shared();
         size_t page = doc->findPdfPage(pdfPage);
-        doc->unlock();
+        doc->unlock_shared();
 
         if (page == npos) {
             control->askInsertPdfPage(pdfPage);
         } else {
             if (dest.shouldChangeTop()) {
-                control->getScrollHandler()->scrollToPage(page, {dest.getLeft(), dest.getTop(), -1, -1});
+                jumpToPage(page, {dest.getLeft(), dest.getTop(), -1, -1});
             } else {
                 if (control->getCurrentPageNo() != page) {
-                    control->getScrollHandler()->scrollToPage(page);
+                    jumpToPage(page);
                 }
             }
         }
@@ -100,7 +125,7 @@ void ScrollHandler::scrollToAnnotatedPage(bool next) {
 
     for (size_t i = this->control->getCurrentPageNo() + step; i < doc->getPageCount() && i != size_t(-1); i += step) {
         if (doc->getPage(i)->isAnnotated()) {
-            scrollToPage(i);
+            jumpToPage(i);
             break;
         }
     }
@@ -121,5 +146,5 @@ void ScrollHandler::pageChanged(size_t page) {
     if (page == 0) {
         return;
     }
-    scrollToPage(page - 1);
+    jumpToPage(page - 1);
 }

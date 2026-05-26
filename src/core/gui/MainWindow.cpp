@@ -97,6 +97,22 @@ MainWindow::MainWindow(GladeSearchpath* gladeSearchPath, Control* control, GtkAp
                      this);
 #endif
 
+    g_signal_connect(
+            this->window, "configure-event", G_CALLBACK(+[](GtkWidget* widget, GdkEvent*, gpointer self) -> gboolean {
+                auto win = static_cast<MainWindow*>(self);
+                GdkWindow* gdkWindow = gtk_widget_get_window(widget);
+                GdkDisplay* display = gdkWindow ? gdk_window_get_display(gdkWindow) : nullptr;
+                GdkMonitor* monitor = display ? gdk_display_get_monitor_at_window(display, gdkWindow) : nullptr;
+                if (monitor && monitor != win->lastMonitor) {
+                    win->lastMonitor = monitor;
+                    const char* monitorName = gdk_monitor_get_model(monitor);
+                    g_debug("Window moved to monitor \"%s\"", monitorName);
+                    win->setDPI();
+                }
+                return false;
+            }),
+            this);
+
     // "watch over" all key events
     auto keyPropagate = +[](GtkWidget* w, GdkEvent* e, gpointer) {
         return gtk_window_propagate_key_event(GTK_WINDOW(w), (GdkEventKey*)(e));
@@ -171,7 +187,7 @@ static ThemeProperties getThemeProperties(GtkWidget* w) {
 
     // Try to figure out if the theme is dark or light
     // Some themes handle their dark variant via "gtk-application-prefer-dark-theme" while other just append "-dark"
-    const std::regex nameparser("([a-zA-Z-]+?)([:-][dD]ark)?");
+    const std::regex nameparser("([a-zA-Z0-9_\\.-]+?)([:-][dD]ark)?");
     std::cmatch sm;
     std::regex_match(name.get(), sm, nameparser);
 
@@ -297,18 +313,12 @@ void MainWindow::initXournalWidget() {
 
     gtk_box_append(GTK_BOX(get("boxContents")), winXournal);
 
-    GtkWidget* vpXournal = gtk_viewport_new(nullptr, nullptr);
-
-    gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(winXournal), vpXournal);
-
     scrollHandling = std::make_unique<ScrollHandling>(GTK_SCROLLED_WINDOW(winXournal));
 
-    this->xournal = std::make_unique<XournalView>(vpXournal, control, scrollHandling.get());
+    this->xournal = std::make_unique<XournalView>(winXournal, control, scrollHandling.get());
 
     control->getZoomControl()->initZoomHandler(this->window, winXournal, xournal.get(), control);
     gtk_widget_show_all(winXournal);
-
-    scrollHandling->init(this->xournal->getWidget(), this->xournal->getLayout());
 }
 
 void MainWindow::setGtkTouchscreenScrollingForDeviceMapping() {
@@ -327,10 +337,6 @@ void MainWindow::setGtkTouchscreenScrollingEnabled(bool enabled) {
 }
 
 auto MainWindow::getLayout() const -> Layout* { return this->xournal->getLayout(); }
-
-auto MainWindow::getNegativeXournalWidgetPos() const -> xoj::util::Point<double> {
-    return Util::toWidgetCoords(this->winXournal, xoj::util::Point{0.0, 0.0});
-}
 
 auto cancellable_cancel(GCancellable* cancel) -> bool {
     g_cancellable_cancel(cancel);

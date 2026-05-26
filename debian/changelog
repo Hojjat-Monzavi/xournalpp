@@ -1,8 +1,92 @@
-xournalpp (1.2.8+dev-1) UNRELEASED; urgency=medium
+xournalpp (1.3.4+dev-1) UNRELEASED; urgency=medium
 
   * 
 
- -- Benjamin Hennion <17818041+bhennion@users.noreply.github.com>  Mon, 01 Sep 2025 10:40:09 +0200
+ -- Benjamin Hennion <17818041+bhennion@users.noreply.github.com>  Sat, 28 Mar 2026 18:22:15 +0100
+
+xournalpp (1.3.4-1) unstable; urgency=medium
+
+  * Fixed a crash when invoking the floating toolbox with the Laser pointer on
+  * Fixed sometimes missing page numbers in sidebar
+  * Improved scrolling/zooming performances
+  * Windows: Fixed URI activations
+  * Make default Plugins compatible with Lua 5.5
+  * Updated translations
+
+ -- Benjamin Hennion <17818041+bhennion@users.noreply.github.com>  Sat, 28 Mar 2026 18:22:15 +0100
+
+xournalpp (1.3.3-1) unstable; urgency=medium
+
+  * Fix undo/redo crash with automatic page insertion
+  * Silent errors when parsing some files are no longer silent
+  * Fix more UTF-8 conversion issues
+  * Report failure to open recent files
+  * Fix rendering of single-dot strokes
+  * Fix horizontal alignment of pages
+  * Fix toolbar item "Draw line" being wrongly enabled
+  * Improve zoom/scroll responsivity
+  * Updated translations
+
+ -- Benjamin Hennion <17818041+bhennion@users.noreply.github.com>  Sat, 28 Feb 2026 09:16:06 +0100
+
+xournalpp (1.3.2-1) unstable; urgency=medium
+
+  * Fix sidebar layout when resizing and changing tab
+  * Fix graph/dotted backgrounds
+  * Restore new page behaviour with PDF background
+  * Fix crashes on Windows (UTF-8 conversion and when missing background)
+  * Fix crash on Clipboard IO error
+  * Make Plugin openFile API comply with forceOpen parameter
+  * Fix CLI behaviour on error
+  * Restore GtkSourceView support
+  * Fix recoloring when light color is lighter
+  * Fix image orientation on Drag-n-Drop pasting
+  * Fix crashes when using touchscreen in Setting->Input panel
+  * Updated translations
+
+ -- Benjamin Hennion <17818041+bhennion@users.noreply.github.com>  Tue, 03 Feb 2026 09:52:28 +0100
+
+xournalpp (1.3.1-1) unstable; urgency=medium
+
+  * Restored the rendering of graph backgrounds used before the 1.3.0 release
+  * Fixed image loading on Windows
+  * Fixed clipboard pasting
+  * Fixed crashes related to saving text nodes and automatic page addition
+
+ -- Roland Lötscher <roland_loetscher@hotmail.com>  Sun, 21 Dec 2025 22:04:28 +0100
+
+xournalpp (1.3.0-1) unstable; urgency=medium
+
+  * PDF exports now preserves the background PDF's inner structure (hyperlink, comments, ...)
+  * The color palette can now be selected in the preferences
+  * Grid snapping now follows the displayed grid for all background types
+  * New graph background with periodically thicker lines
+  * New laser pointer tool, writing ephemeral strokes
+  * Allow to use an external editor for LaTeX entries
+  * Add the possibility of recoloring the screen output (e.g. for night mode or accessibility)
+  * Add the possibility of choosing the PDF marker opacity
+  * Configurable behaviour in fullscreen or presentation modes
+  * Allow to optionally scroll beyond the page's edges
+  * The toolbars can now contain several instances of the same button
+  * Major changes in the plugin interface
+  * Many smaller new features and bugfixes
+
+ -- Benjamin Hennion <17818041+bhennion@users.noreply.github.com>  Thu, 11 Dec 2025 21:44:23 +0100
+
+xournalpp (1.2.10-1) unstable; urgency=medium
+
+  * Updated translations
+
+ -- Benjamin Hennion <17818041+bhennion@users.noreply.github.com>  Sun, 07 Dec 2025 11:26:46 +0100
+
+xournalpp (1.2.9-1) unstable; urgency=medium
+
+  * Fixed diplay bug when mixing versions
+  * Fixed clipboard issues
+  * Fixed dangerous background overriding
+  * Fixed image attach mode
+
+ -- Benjamin Hennion <17818041+bhennion@users.noreply.github.com>  Wed, 03 Dec 2025 10:36:35 +0100
 
 xournalpp (1.2.8-1) unstable; urgency=medium
 

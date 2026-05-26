@@ -149,7 +149,13 @@ auto InputContext::handle(GdkEvent* sourceEvent) -> bool {
         return false;
     }
 
-    InputEvent event = InputEvents::translateEvent(sourceEvent, this->getSettings());
+    InputEvent event = InputEvents::translateEvent(
+            sourceEvent, this->getSettings(),
+            this->view ?
+                    xoj::util::Point<double>{
+                            gtk_adjustment_get_value(GTK_XOURNAL(this->view->getWidget())->hadjustment),
+                            gtk_adjustment_get_value(GTK_XOURNAL(this->view->getWidget())->vadjustment)} :
+                    xoj::util::Point<double>{0., 0.});
 
     // Add the device to the list of known devices if it is currently unknown
     if (gdk_device_get_device_type(sourceDevice) != GDK_DEVICE_TYPE_MASTER &&
@@ -249,7 +255,9 @@ void InputContext::blockDevice(InputContext::DeviceType deviceType) {
             this->stylusHandler->block(true);
             break;
         case TOUCHSCREEN:
-            this->touchDrawingHandler->block(true);
+            if (this->touchDrawingHandler) {
+                this->touchDrawingHandler->block(true);
+            }
             this->touchHandler->block(true);
             break;
     }
@@ -267,7 +275,9 @@ void InputContext::unblockDevice(InputContext::DeviceType deviceType) {
             this->stylusHandler->block(false);
             break;
         case TOUCHSCREEN:
-            this->touchDrawingHandler->block(false);
+            if (this->touchDrawingHandler) {
+                this->touchDrawingHandler->block(false);
+            }
             this->touchHandler->block(false);
             break;
     }
@@ -280,7 +290,7 @@ auto InputContext::isBlocked(InputContext::DeviceType deviceType) -> bool {
         case STYLUS:
             return this->stylusHandler->isBlocked();
         case TOUCHSCREEN:
-            return this->touchDrawingHandler->isBlocked();
+            return this->touchDrawingHandler && this->touchDrawingHandler->isBlocked();
     }
     return false;
 }

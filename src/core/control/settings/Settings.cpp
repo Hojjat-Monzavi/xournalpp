@@ -16,6 +16,7 @@
 #include "control/DeviceListHelper.h"               // for InputDevice
 #include "control/ToolEnums.h"                      // for ERASER_TYPE_NONE
 #include "control/settings/LatexSettings.h"         // for LatexSettings
+#include "control/settings/PageTemplateSettings.h"  // for PageTemplateSettings
 #include "control/settings/SettingsEnums.h"         // for InputDeviceTypeOp...
 #include "gui/toolbarMenubar/model/ColorPalette.h"  // for Palette
 #include "model/FormatDefinitions.h"                // for FormatUnits, XOJ_...
@@ -61,6 +62,7 @@ void Settings::loadDefault() {
 
     this->maximized = false;
     this->showPairedPages = false;
+    this->showPageShadow = true;
     this->presentationMode = false;
 
     this->numColumns = 1;  // only one of these applies at a time
@@ -165,6 +167,12 @@ void Settings::loadDefault() {
     // Right button
     this->buttonConfig[BUTTON_MOUSE_RIGHT] = std::make_unique<ButtonConfig>(TOOL_NONE, Colors::black, TOOL_SIZE_NONE,
                                                                             DRAWING_TYPE_DEFAULT, ERASER_TYPE_NONE);
+    // 4th button
+    this->buttonConfig[BUTTON_MOUSE_4] = std::make_unique<ButtonConfig>(TOOL_NONE, Colors::black, TOOL_SIZE_NONE,
+                                                                        DRAWING_TYPE_DEFAULT, ERASER_TYPE_NONE);
+    // 5th button
+    this->buttonConfig[BUTTON_MOUSE_5] = std::make_unique<ButtonConfig>(TOOL_NONE, Colors::black, TOOL_SIZE_NONE,
+                                                                        DRAWING_TYPE_DEFAULT, ERASER_TYPE_NONE);
     // Touch
     this->buttonConfig[BUTTON_TOUCH] = std::make_unique<ButtonConfig>(TOOL_NONE, Colors::black, TOOL_SIZE_NONE,
                                                                       DRAWING_TYPE_DEFAULT, ERASER_TYPE_NONE);
@@ -468,6 +476,8 @@ void Settings::parseItem(xmlDocPtr doc, xmlNodePtr cur) {
         this->layoutBottomToTop = xmlStrcmp(value, reinterpret_cast<const xmlChar*>("true")) == 0;
     } else if (xmlStrcmp(name, reinterpret_cast<const xmlChar*>("showPairedPages")) == 0) {
         this->showPairedPages = xmlStrcmp(value, reinterpret_cast<const xmlChar*>("true")) == 0;
+    } else if (xmlStrcmp(name, reinterpret_cast<const xmlChar*>("showPageShadow")) == 0) {
+        this->showPageShadow = xmlStrcmp(value, reinterpret_cast<const xmlChar*>("true")) == 0;
     } else if (xmlStrcmp(name, reinterpret_cast<const xmlChar*>("numPairsOffset")) == 0) {
         this->numPairsOffset = g_ascii_strtoll(reinterpret_cast<const char*>(value), nullptr, 10);
     } else if (xmlStrcmp(name, reinterpret_cast<const xmlChar*>("presentationMode")) == 0) {
@@ -505,7 +515,7 @@ void Settings::parseItem(xmlDocPtr doc, xmlNodePtr cur) {
     } else if (xmlStrcmp(name, reinterpret_cast<const xmlChar*>("pluginDisabled")) == 0) {
         this->pluginDisabled = reinterpret_cast<const char*>(value);
     } else if (xmlStrcmp(name, reinterpret_cast<const xmlChar*>("pageTemplate")) == 0) {
-        this->pageTemplate = reinterpret_cast<const char*>(value);
+        this->pageTemplateSettings.parse(reinterpret_cast<const char*>(value));
     } else if (xmlStrcmp(name, reinterpret_cast<const xmlChar*>("sizeUnit")) == 0) {
         this->sizeUnit = reinterpret_cast<const char*>(value);
     } else if (xmlStrcmp(name, reinterpret_cast<const xmlChar*>("audioFolder")) == 0) {
@@ -723,9 +733,9 @@ void Settings::parseItem(xmlDocPtr doc, xmlNodePtr cur) {
     } else if (xmlStrcmp(name, reinterpret_cast<const xmlChar*>("stabilizerFinalizeStroke")) == 0) {
         this->stabilizerFinalizeStroke = xmlStrcmp(value, reinterpret_cast<const xmlChar*>("true")) == 0;
     } else if (xmlStrcmp(name, reinterpret_cast<const xmlChar*>("colorPalette")) == 0) {
-        std::string paletteConfig = std::string{reinterpret_cast<const char*>(value)};
+        std::string_view paletteConfig = std::string_view{reinterpret_cast<const char*>(value)};
         if (!paletteConfig.empty()) {
-            this->colorPaletteSetting = paletteConfig;
+            this->colorPaletteSetting = fs::path(xoj::util::utf8(paletteConfig));
         }
     }
     /**/
@@ -1035,6 +1045,7 @@ void Settings::save() {
     SAVE_INT_PROP(numRows);
     SAVE_BOOL_PROP(viewFixedRows);
     SAVE_BOOL_PROP(showPairedPages);
+    SAVE_BOOL_PROP(showPageShadow);
     SAVE_BOOL_PROP(layoutVertical);
     SAVE_BOOL_PROP(layoutRightToLeft);
     SAVE_BOOL_PROP(layoutBottomToTop);
@@ -1142,6 +1153,7 @@ void Settings::save() {
     SAVE_UINT_PROP(preloadPagesAfter);
     SAVE_BOOL_PROP(eagerPageCleanup);
 
+    const auto pageTemplate = pageTemplateSettings.toString();
     SAVE_STRING_PROP(pageTemplate);
     ATTACH_COMMENT("Config for new pages");
 
@@ -1740,14 +1752,14 @@ void Settings::setDefaultPdfExportName(const std::u8string& name) {
     save();
 }
 
-auto Settings::getPageTemplate() const -> string const& { return this->pageTemplate; }
+auto Settings::getPageTemplateSettings() const -> PageTemplateSettings const& { return this->pageTemplateSettings; }
 
-void Settings::setPageTemplate(const string& pageTemplate) {
-    if (this->pageTemplate == pageTemplate) {
+void Settings::setPageTemplateSettings(const PageTemplateSettings& newSettings) {
+    if (this->pageTemplateSettings == newSettings) {
         return;
     }
 
-    this->pageTemplate = pageTemplate;
+    this->pageTemplateSettings = newSettings;
 
     save();
 }
@@ -1800,6 +1812,17 @@ void Settings::setShowPairedPages(bool showPairedPages) {
 }
 
 auto Settings::isShowPairedPages() const -> bool { return this->showPairedPages; }
+
+void Settings::setShowPageShadow(bool showPageShadow) {
+    if (this->showPageShadow == showPageShadow) {
+        return;
+    }
+
+    this->showPageShadow = showPageShadow;
+    save();
+}
+
+auto Settings::isShowPageShadow() const -> bool { return this->showPageShadow; }
 
 void Settings::setPresentationMode(bool presentationMode) {
     if (this->presentationMode == presentationMode) {

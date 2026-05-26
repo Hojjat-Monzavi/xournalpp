@@ -30,7 +30,7 @@ ToolHandler::ToolHandler(ToolListener* stateChangeListener, ActionDatabase* acti
 class ToolSelectPDFText: public Tool {
 public:
     ToolSelectPDFText(std::string name, ToolType type, Color color):
-            Tool(name, type, color, TOOL_CAP_COLOR | TOOL_CAP_RULER, std::nullopt) {}
+            Tool(name, type, color, TOOL_CAP_COLOR, std::nullopt) {}
 
     ~ToolSelectPDFText() override{};
 
@@ -56,8 +56,7 @@ void ToolHandler::initTools() {
     tools[TOOL_PEN - TOOL_PEN] = std::make_unique<Tool>(
             "pen", TOOL_PEN, Colors::xopp_royalblue,
             TOOL_CAP_COLOR | TOOL_CAP_SIZE | TOOL_CAP_RULER | TOOL_CAP_RECTANGLE | TOOL_CAP_ELLIPSE | TOOL_CAP_ARROW |
-                    TOOL_CAP_DOUBLE_ARROW | TOOL_CAP_SPLINE | TOOL_CAP_RECOGNIZER | TOOL_CAP_FILL | TOOL_CAP_DASH_LINE |
-                    TOOL_CAP_LINE_STYLE,
+                    TOOL_CAP_DOUBLE_ARROW | TOOL_CAP_SPLINE | TOOL_CAP_RECOGNIZER | TOOL_CAP_FILL | TOOL_CAP_LINE_STYLE,
             thickness);
 
     thickness[TOOL_SIZE_VERY_FINE] = 1;
@@ -158,6 +157,8 @@ void ToolHandler::initTools() {
     this->stylusButton2Tool = std::make_unique<Tool>(*tools[TOOL_HIGHLIGHTER - TOOL_PEN]);
     this->mouseMiddleButtonTool = std::make_unique<Tool>(*tools[TOOL_HIGHLIGHTER - TOOL_PEN]);
     this->mouseRightButtonTool = std::make_unique<Tool>(*tools[TOOL_HIGHLIGHTER - TOOL_PEN]);
+    this->mouseButton4Tool = std::make_unique<Tool>(*tools[TOOL_HIGHLIGHTER - TOOL_PEN]);
+    this->mouseButton5Tool = std::make_unique<Tool>(*tools[TOOL_HIGHLIGHTER - TOOL_PEN]);
     this->touchDrawingButtonTool = std::make_unique<Tool>(*tools[TOOL_HIGHLIGHTER - TOOL_PEN]);
 
     this->toolbarSelectedTool = &getTool(TOOL_PEN);
@@ -444,7 +445,12 @@ void ToolHandler::saveSettings() const {
             st.setIntHex("color", int(uint32_t(tool->getColor())));
         }
 
-        st.setString("drawingType", drawingTypeToString(tool->getDrawingType()).data());
+        static constexpr unsigned int SHAPE_CAPS = TOOL_CAP_RULER | TOOL_CAP_RECTANGLE | TOOL_CAP_ELLIPSE |
+                                                   TOOL_CAP_ARROW | TOOL_CAP_DOUBLE_ARROW | TOOL_CAP_RECOGNIZER |
+                                                   TOOL_CAP_SPLINE;
+        if (tool->capabilities & SHAPE_CAPS) {
+            st.setString("drawingType", drawingTypeToString(tool->getDrawingType()).data());
+        }
 
         if (tool->hasCapability(TOOL_CAP_SIZE)) {
             std::string value;
@@ -671,6 +677,10 @@ auto ToolHandler::getButtonTool(Button button) const -> Tool* {
             return this->mouseMiddleButtonTool.get();
         case Button::BUTTON_MOUSE_RIGHT:
             return this->mouseRightButtonTool.get();
+        case Button::BUTTON_MOUSE_4:
+            return this->mouseButton4Tool.get();
+        case Button::BUTTON_MOUSE_5:
+            return this->mouseButton5Tool.get();
         case Button::BUTTON_TOUCH:
             return this->touchDrawingButtonTool.get();
         default:
@@ -698,6 +708,12 @@ void ToolHandler::resetButtonTool(ToolType type, Button button) {
             break;
         case Button::BUTTON_MOUSE_RIGHT:
             this->mouseRightButtonTool.reset(new Tool(tool));
+            break;
+        case Button::BUTTON_MOUSE_4:
+            this->mouseButton4Tool.reset(new Tool(tool));
+            break;
+        case Button::BUTTON_MOUSE_5:
+            this->mouseButton5Tool.reset(new Tool(tool));
             break;
         case Button::BUTTON_TOUCH:
             this->touchDrawingButtonTool.reset(new Tool(tool));

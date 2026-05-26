@@ -207,10 +207,14 @@ auto addElementsFromActiveLayer(Control* ctrl, EditSelection* base, const Insert
 }
 };  // namespace SelectionFactory
 
+static int getBtnWidth(Control* c) {
+    return std::max(10, round_cast<int>(c->getZoomControl()->getZoom100Value() * Util::DPI_NORMALIZATION_FACTOR / 8));
+}
+
 EditSelection::EditSelection(Control* ctrl, InsertionOrder elts, const PageRef& page, Layer* layer, XojPageView* view,
                              const Range& bounds, const Range& snappingBounds):
         snappedBounds(snappingBounds),
-        btnWidth(std::max(10, ctrl->getSettings()->getDisplayDpi() / 8)),
+        btnWidth(getBtnWidth(ctrl)),
         sourcePage(page),
         sourceLayer(layer),
         view(view),
@@ -242,7 +246,7 @@ EditSelection::EditSelection(Control* ctrl, InsertionOrder elts, const PageRef& 
 
 EditSelection::EditSelection(Control* ctrl, const PageRef& page, Layer* layer, XojPageView* view):
         snappedBounds(Rectangle<double>{}),
-        btnWidth(std::max(10, ctrl->getSettings()->getDisplayDpi() / 8)),
+        btnWidth(getBtnWidth(ctrl)),
         sourcePage(page),
         sourceLayer(layer),
         view(view),
@@ -252,12 +256,8 @@ EditSelection::EditSelection(Control* ctrl, const PageRef& page, Layer* layer, X
 }
 
 EditSelection::~EditSelection() {
+    this->edgePanHandler.cancel();
     finalizeSelection();
-
-    if (this->edgePanHandler) {
-        g_source_destroy(this->edgePanHandler);
-        g_source_unref(this->edgePanHandler);
-    }
 }
 
 /**
@@ -386,22 +386,6 @@ auto EditSelection::getSourcePage() const -> PageRef { return this->sourcePage; 
  * Get the source layer (form where the Elements come)
  */
 auto EditSelection::getSourceLayer() const -> Layer* { return this->sourceLayer; }
-
-/**
- * Get the X coordinate in View coordinates (absolute)
- */
-auto EditSelection::getXOnViewAbsolute() const -> int {
-    double zoom = view->getXournal()->getZoom();
-    return this->view->getX() + static_cast<int>(this->getXOnView() * zoom);
-}
-
-/**
- * Get the Y coordinate in View coordinates (absolute)
- */
-auto EditSelection::getYOnViewAbsolute() const -> int {
-    double zoom = view->getXournal()->getZoom();
-    return this->view->getY() + static_cast<int>(this->getYOnView() * zoom);
-}
 
 /**
  * Sets the tool size for pen or eraser, returs an undo action
@@ -552,9 +536,6 @@ void EditSelection::mouseUp() {
     }
 }
 
-/**
- * Handles mouse input for moving and resizing, coordinates are relative to "view"
- */
 void EditSelection::mouseDown(CursorSelectionType type, double x, double y) {
     double zoom = this->view->getXournal()->getZoom();
 
@@ -571,9 +552,6 @@ void EditSelection::mouseDown(CursorSelectionType type, double x, double y) {
     this->relMousePosRotY = y / zoom - this->snappedBounds.y;
 }
 
-/**
- * Handles mouse input for moving and resizing, coordinates are relative to "view"
- */
 void EditSelection::mouseMove(double mouseX, double mouseY, bool alt) {
     double zoom = this->view->getXournal()->getZoom();
 
@@ -754,8 +732,9 @@ auto EditSelection::getPageViewUnderCursor() -> XojPageView* {
     double zoom = view->getXournal()->getZoom();
 
     // get grabbing hand position
-    double hx = this->view->getX() + (this->snappedBounds.x + this->relMousePosX) * zoom;
-    double hy = this->view->getY() + (this->snappedBounds.y + this->relMousePosY) * zoom;
+    auto p = this->view->getPixelPosition();
+    double hx = p.x + (this->snappedBounds.x + this->relMousePosX) * zoom;
+    double hy = p.y + (this->snappedBounds.y + this->relMousePosY) * zoom;
 
 
     Layout* layout = this->view->getXournal()->getLayout();
@@ -773,27 +752,15 @@ void EditSelection::translateToView(XojPageView* v) {
 
     double ox = this->snappedBounds.x - this->x;
     double oy = this->snappedBounds.y - this->y;
-    int aX1 = getXOnViewAbsolute();
-    int aY1 = getYOnViewAbsolute();
 
-    this->x = (aX1 - v->getX()) / zoom;
-    this->y = (aY1 - v->getY()) / zoom;
+    auto diff = this->view->getPixelPosition() - v->getPixelPosition();
+
+    this->x += diff.x / zoom;
+    this->y += diff.y / zoom;
     this->snappedBounds.x = this->x + ox;
     this->snappedBounds.y = this->y + oy;
 
     this->view = v;
-
-    //	int aX2 = getXOnViewAbsolute();
-    //	int aY2 = getYOnViewAbsolute();
-    //
-    //	if (aX1 != aX2)
-    //	{
-    //		g_message("aX1 != aX2!! %i / %i", aX1, aX2);
-    //	}
-    //	if (aY1 != aY2)
-    //	{
-    //		g_message("aY1 != aY2!! %i / %i", aY1, aY2);
-    //	}
 }
 
 void EditSelection::copySelection() {
@@ -870,13 +837,10 @@ void EditSelection::moveSelection(double dx, double dy, bool addMoveUndo) {
 
 void EditSelection::setEdgePan(bool pan) {
     if (pan && !this->edgePanHandler) {
-        this->edgePanHandler = g_timeout_source_new(1000 / PAN_TIMER_RATE);
-        g_source_set_callback(this->edgePanHandler, xoj::util::wrap_v<EditSelection::handleEdgePan>, this, nullptr);
-        g_source_attach(this->edgePanHandler, nullptr);
-    } else if (!pan && this->edgePanHandler) {
-        g_source_destroy(this->edgePanHandler);
-        g_source_unref(this->edgePanHandler);
-        this->edgePanHandler = nullptr;
+        this->edgePanHandler =
+                g_timeout_add(1000 / PAN_TIMER_RATE, xoj::util::wrap_v<EditSelection::handleEdgePan>, this);
+    } else if (!pan) {
+        this->edgePanHandler.cancel();
         this->edgePanInhibitNext = false;
     }
 }
@@ -885,7 +849,8 @@ bool EditSelection::isEdgePanning() const { return this->edgePanHandler; }
 
 bool EditSelection::handleEdgePan(EditSelection* self) {
     if (self->view->getXournal()->getControl()->getZoomControl()->isZoomPresentationMode()) {
-        self->setEdgePan(false);
+        self->edgePanHandler.consume();
+        self->edgePanInhibitNext = false;
         return false;
     }
 
@@ -948,8 +913,8 @@ bool EditSelection::handleEdgePan(EditSelection* self) {
         return layoutScroll;
     };
     // Compute scroll (for layout) and translation (for selection) for x and y
-    const int layoutWidth = layout->getMinimalWidth();
-    const int layoutHeight = layout->getMinimalHeight();
+    const int layoutWidth = layout->getTotalPixelWidth();
+    const int layoutHeight = layout->getTotalPixelHeight();
     const auto visRect = layout->getVisibleRect();
     const auto bbox = self->getBoundingBoxInView();
     const auto layoutScrollX =
@@ -960,26 +925,33 @@ bool EditSelection::handleEdgePan(EditSelection* self) {
     const auto translateY = layoutScrollY / zoom;
 
     // Perform the scrolling
-    bool edgePanned = false;
     if (self->isMoving() && (layoutScrollX != 0.0 || layoutScrollY != 0.0)) {
-        layout->scrollRelative(layoutScrollX, layoutScrollY);
+        layout->scrollRelative(layoutScrollX, layoutScrollY);  // May create a page
         self->moveSelection(translateX, translateY);
-        edgePanned = true;
+
+        if (XojPageView* v = self->getPageViewUnderCursor(); v && v != self->view) {
+            XournalView* xournal = self->view->getXournal();
+            xournal->pageSelected(xournal->getControl()->getDocument()->indexOf(v->getPage()));
+
+            self->translateToView(v);
+        }
 
         // To prevent the selection from jumping and to reduce jitter, block the selection movement triggered by user
         // input
         self->edgePanInhibitNext = true;
+
+        return true;
     } else {
         // No panning, so disable the timer.
-        self->setEdgePan(false);
-    }
+        self->edgePanHandler.consume();
+        self->edgePanInhibitNext = false;
 
-    return edgePanned;
+        return false;
+    }
 }
 
 auto EditSelection::getBoundingBoxInView() const -> Rectangle<double> {
-    int viewx = this->view->getX();
-    int viewy = this->view->getY();
+    auto viewpos = this->view->getPixelPosition();
     double zoom = this->view->getXournal()->getZoom();
 
     double sin = std::sin(this->rotation);
@@ -991,7 +963,7 @@ auto EditSelection::getBoundingBoxInView() const -> Rectangle<double> {
     double minx = cx - w / 2.0;
     double miny = cy - h / 2.0;
 
-    return {viewx + minx * zoom, viewy + miny * zoom, w * zoom, h * zoom};
+    return {viewpos.x + minx * zoom, viewpos.y + miny * zoom, w * zoom, h * zoom};
 }
 
 void EditSelection::ensureWithinVisibleArea() {

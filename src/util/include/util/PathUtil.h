@@ -112,9 +112,6 @@ private:
 [[maybe_unused]] [[nodiscard]] fs::path fromGFilename(const char* path);
 [[maybe_unused]] [[nodiscard]] GFilename toGFilename(fs::path const& path);
 
-
-void openFileWithDefaultApplication(const fs::path& filename);
-
 [[maybe_unused]] [[nodiscard]] bool isChildOrEquivalent(fs::path const& path, fs::path const& base);
 
 [[maybe_unused]] bool safeRenameFile(fs::path const& from, fs::path const& to);
@@ -160,6 +157,7 @@ auto system_single_byte_filename(const fs::path& path) -> std::string;
 [[maybe_unused]] [[nodiscard]] fs::path getGettextFilepath(fs::path const& localeDir);
 [[maybe_unused]] [[nodiscard]] fs::path getDataPath();
 [[maybe_unused]] [[nodiscard]] fs::path getLocalePath();
+[[maybe_unused]] [[nodiscard]] fs::path getInstallUiPath();
 [[maybe_unused]] [[nodiscard]] fs::path getExePath();  ///< folder containing the executable
 fs::path getBuiltInPaletteDirectoryPath();
 fs::path getCustomPaletteDirectoryPath();

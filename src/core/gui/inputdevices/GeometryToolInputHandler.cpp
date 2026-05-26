@@ -195,7 +195,7 @@ void GeometryToolInputHandler::sequenceStart(InputEvent const& event) {
     const Layer* layer = page->getSelectedLayer();
     this->lines.clear();
     Document* doc = xournal->getDocument();
-    doc->lock();
+    doc->lock_shared();
     // Performance improvement might be obtained by avoiding filtering all elements each
     // time a finger has been put onto the screen
     for (const auto& e: layer->getElementsView()) {
@@ -206,7 +206,7 @@ void GeometryToolInputHandler::sequenceStart(InputEvent const& event) {
             }
         }
     }
-    doc->unlock();
+    doc->unlock_shared();
 }
 
 void GeometryToolInputHandler::scrollMotion(InputEvent const& event) {
@@ -300,8 +300,8 @@ void GeometryToolInputHandler::rotateAndZoomMotion(InputEvent const& event) {
 
 auto GeometryToolInputHandler::getCoords(InputEvent const& event) -> xoj::util::Point<double> {
     const double zoom = xournal->getZoom();
-    const auto view = controller->getView();
-    return (event.relative - xoj::util::Point<double>(view->getX(), view->getY())) / zoom;
+    auto viewPos = controller->getView()->getPixelPosition();
+    return (event.relative - xoj::util::Point<double>(viewPos.x, viewPos.y)) / zoom;
 }
 
 void GeometryToolInputHandler::blockDevice(InputContext::DeviceType deviceType) { isBlocked[deviceType] = true; }

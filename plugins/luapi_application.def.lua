@@ -376,16 +376,20 @@ function app.addStrokes(opts) end
 --- }
 function app.addTexts(opts) end
 
---- Returns a list of lua table of the texts (from current selection / current layer).
---- Is mostly inverse to app.addTexts (except getTexts will also retrieve the width/height of the textbox)
+--- Returns a list of lua table of the texts (from current selection / current layer / current page / all pages).
+--- When called with "page" to retrieve all elements on the current page, it also adds a field "layer" for the
+--- layer containing the element, and when called with "all" it additionally adds a field "page" containing its page
+--- index together with its layer (all of them being indexed from 1).
 --- 
---- @param type string "selection" or "layer"
+--- Is mostly inverse to app.addTexts (except getTexts may also retrieve the width/height/page/layer of the textbox)
+--- 
+--- @param type string "selection" or "layer" or "page" or "all"
 --- @return {text:string, font:{name:string, size:number}, color:integer, x:number, y:number, width:number,
---- height:number, ref:lightuserdata}[] texts
+--- height:number, ref:lightuserdata, page:number|nil, layer:number|nil}[] texts
 --- 
---- Required argument: type ("selection" or "layer")
+--- Required argument: type ("selection" or "layer" or "page" or "all")
 --- 
---- Example: local texts = app.getTexts("layer")
+--- Example: local texts = app.getTexts("all")
 --- 
 --- possible return value:
 --- {
@@ -401,6 +405,8 @@ function app.addTexts(opts) end
 ---     width = 55.0,
 ---     height = 23.0,
 ---     ref = userdata: 0x5f644c0700d0
+---     page = 1, -- Only present when called with the "all" argument
+---     layer = 1, -- Only present when called with the "all" or "page" argument
 ---   },
 ---   {
 ---     text = "Testing",
@@ -414,21 +420,27 @@ function app.addTexts(opts) end
 ---     width = 55.0,
 ---     height = 23.0,
 ---     ref = userdata: 0x5f644c0701e8
+---     page = 2,
+---     layer = 1,
 ---   },
 --- }
 --- 
 function app.getTexts(type) end
 
---- Puts a Lua Table of the Strokes (from the selection tool / selected layer) onto the stack.
+--- Puts a Lua Table of the Strokes (from the selection tool / selected layer / selected page / all document) onto the
+--- stack. When called with "page" to retrieve all elements on the current page, it also adds a field "layer" for
+--- the layer containing the element, and when called with "all" it additionally adds a field "page" containing its page
+--- index together with its layer (all of them being indexed from 1).
+--- 
 --- Is inverse to app.addStrokes
 --- 
---- @param type string "selection" or "layer"
+--- @param type string "selection" or "layer" or "page" or "all"
 --- @return {x:number[], y:number[], pressure:number[], tool:string, width:number, color:integer, fill:number,
---- linestyle:string, ref:lightuserdata}[] strokes
+--- linestyle:string, ref:lightuserdata, page:number|nil, layer:number|nil}[] strokes
 --- 
---- Required argument: type ("selection" or "layer")
+--- Required argument: type ("selection" or "layer" or "page" or "all")
 --- 
---- Example: local strokes = app.getStrokes("selection")
+--- Example: local strokes = app.getStrokes("all")
 --- 
 --- possible return value:
 --- {
@@ -443,7 +455,9 @@ function app.getTexts(type) end
 ---             ["color"] = 0xa000f0,
 ---             ["fill"] = 0,
 ---             ["lineStyle"] = "plain",
----             ["ref"] = userdata: 0x5f644c02c538
+---             ["ref"] = userdata: 0x5f644c02c538,
+---             ["page"] = 1, -- Only present when called with "all"
+---             ["layer"] = 1, -- Only present when called with "all" or "page"
 ---         },
 ---         {
 ---             ["x"]         = {207, 207.5, 315.2, 315.29, 207.5844},
@@ -454,6 +468,8 @@ function app.getTexts(type) end
 ---             ["fill"]      = -1,
 ---             ["lineStyle"] = "plain",
 ---             ["ref"] = userdata: 0x5f644c02d440
+---             ["page"] = 2,
+---             ["layer"] = 1,
 ---         },
 ---         {
 ---             ["x"]         = {387.60, 387.6042, 500.879, 500.87, 387.604},
@@ -464,6 +480,8 @@ function app.getTexts(type) end
 ---             ["fill"]      = -1,
 ---             ["lineStyle"] = "plain",
 ---             ["ref"] = userdata: 0x5f644c0700d0
+---             ["page"] = 2,
+---             ["layer"] = 2,
 ---         },
 --- }
 function app.getStrokes(type) end
@@ -699,18 +717,34 @@ function app.getDocumentStructure() end
 --- scrolls to page 10 (absolute mode)
 function app.scrollToPage(page, relative) end
 
---- Scrolls to the position on the selected page specified relatively (by default) or absolutely
+--- Scrolls to the position relatively (by default) or absolutely (whole layout)
 --- 
 --- @param x number
 --- @param y number
 --- @param relative boolean
 --- 
 --- Example 1: app.scrollToPos(20,10)
---- scrolls 20pt right and 10pt down (relative mode)
+--- scrolls 20 pixel right and 10 pixel down from current position (relative mode)
 --- 
 --- Example 2: app.scrollToPos(200, 50, false)
---- scrolls to page position 200pt right and 50pt down from the left page corner  (absolute mode)
+--- scrolls to absolute pixel coordinates (200, 50) from top left corner of the layout (absolute mode)
 function app.scrollToPos(x, y, relative) end
+
+--- Obtains the current absolute scroll position (position on the whole layout) and width and height of the currently
+--- visible window, measured in pixels.
+--- 
+--- @return {x:number, y:number, width:number, height:number}
+--- 
+--- Example: local scrollPos = app.getScrollPos()
+--- 
+--- return value:
+--- {
+---     ["x"] = number,
+---     ["y"] = number,
+---     ["width"] = number,
+---     ["height"] = number,
+--- }
+function app.getScrollPos() end
 
 --- Obtains the label of the specified page in the pdf background.
 --- 
@@ -806,7 +840,7 @@ function app.setZoom(zoom) end
 
 --- Exports the current document as a pdf or as a svg or png image
 --- 
---- @param opts {outputFile:string, range:string, background:string, progressiveMode: boolean}
+--- @param opts {outputFile:string, range:string, background:string, progressiveMode: boolean, backend: string}
 --- 
 --- Example 1:
 --- app.export({["outputFile"] = "Test.pdf", ["range"] = "2-5; 7", ["background"] = "none", ["progressiveMode"] = true})
@@ -818,6 +852,10 @@ function app.setZoom(zoom) end
 --- 
 --- Example 3:
 --- app.export({["outputFile"] = "Test.png", ["layerRange"] = "1-2", ["background"] = "all", ["pngWidth"] = 800})
+--- 
+--- Example 4:
+--- app.export({["outputFile"] = "Test.pdf", ["backend"] = "cairo"})
+--- uses the cairo backend for the PDF export, which has a proper support for cropped pages.
 function app.export(opts) end
 
 --- Opens a file and by default asks the user what to do with the old document.
@@ -880,14 +918,18 @@ function app.openFile(path, pageNr, oldDocument) end
 --- maxWidth=400}}}
 function app.addImages(opts) end
 
---- Puts a Lua Table of the Images (from the selection tool / selected layer) onto the stack.
+--- Puts a Lua Table of the Images (from the selection tool / selected layer / selected page / all document) onto the
+--- stack. When called with "page" to retrieve all elements on the current page, it also adds a field "layer" for
+--- the layer containing the element, and when called with "all" it additionally adds a field "page" containing its page
+--- index together with its layer (all of them being indexed from 1).
+--- 
 --- Is inverse to app.addImages
 --- 
---- @param type string "selection" or "layer"
+--- @param type string "selection" or "layer" or "page" or "all"
 --- @return {x:number, y:number, width:number, height:number, data:string, format:string, imageWidth:number,
---- imageHeight:number, ref:lightuserdata}[] images
+--- imageHeight:number, ref:lightuserdata, page:number|nil, layer:number|nil}[] images
 --- 
---- Required argument: type ("selection" or "layer")
+--- Required argument: type ("selection" or "layer" or "page" or "all")
 --- 
 --- Example: local images = app.getImages("selection")
 --- 
@@ -903,6 +945,8 @@ function app.addImages(opts) end
 ---         ["imageWidth"] = integer,
 ---         ["imageHeight"] = integer,
 ---         ["ref"] = userdata: 0x5f644c0700d0
+---         ["page"] = 1, -- Only present when called with "all"
+---         ["layer"] = 1, -- Only present when called with "all" or "page"
 ---     },
 ---     {
 ---         ...
@@ -1052,6 +1096,8 @@ function app.setFont(font) end
 ---| "goto-last"
 ---| "goto-next-annotated-page"
 ---| "goto-previous-annotated-page"
+---| "navigate-back"
+---| "navigate-forward"
 ---| "new-page-before"
 ---| "new-page-after"
 ---| "new-page-at-end"

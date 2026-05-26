@@ -19,7 +19,6 @@
 #include <vector>   // for vector
 
 #include <cairo.h>  // for cairo_t, cairo_matrix_t
-#include <glib.h>   // for GSource
 
 #include "control/ToolEnums.h"               // for ToolSize
 #include "model/Element.h"                   // for Element, Element::Index
@@ -30,6 +29,7 @@
 #include "util/Color.h"                      // for Color
 #include "util/PointerContainerView.h"       // for PointerContainerView
 #include "util/Rectangle.h"                  // for Rectangle
+#include "util/raii/GSourceURef.h"           // for GSourceURef
 #include "util/serializing/Serializable.h"   // for Serializable
 
 #include "CursorSelectionType.h"     // for CursorSelectionType, CURS...
@@ -153,16 +153,6 @@ public:
      */
     Layer* getSourceLayer() const;
 
-    /**
-     * Get the X coordinate in View coordinates (absolute)
-     */
-    int getXOnViewAbsolute() const;
-
-    /**
-     * Get the Y coordinate in View coordinates (absolute)
-     */
-    int getYOnViewAbsolute() const;
-
     inline XojPageView* getView() const { return view; }
 
 public:
@@ -279,12 +269,12 @@ public:
 
 public:
     /**
-     * Handles mouse input for moving and resizing, coordinates are relative to "view"
+     * Handles mouse input for moving and resizing, in pixel-coordinates relative to "view"
      */
     void mouseDown(CursorSelectionType type, double x, double y);
 
     /**
-     * Handles mouse input for moving and resizing, coordinates are relative to "view"
+     * Handles mouse input for moving and resizing, in pixel-coordinates relative to "view"
      */
     void mouseMove(double x, double y, bool alt);
 
@@ -458,7 +448,7 @@ private:  // HANDLER
     /**
      * Edge pan timer
      */
-    GSource* edgePanHandler = nullptr;
+    xoj::util::GSourceURef edgePanHandler;
 
     /**
      * Inhibit the next move event after edge panning finishes. This prevents

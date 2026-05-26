@@ -21,7 +21,7 @@ endif()
 ## Project related Variables
 ## Also update changelog in debian folder!
 project(xournalpp
-        VERSION 1.2.8
+        VERSION 1.3.4
         DESCRIPTION "Xournal++ - Open source hand note-taking program"
         HOMEPAGE_URL "https://xournalpp.github.io/"
         LANGUAGES CXX C)
@@ -86,7 +86,7 @@ configure_file(
 
 find_package(PkgConfig REQUIRED)
 
-set(PACKAGE_DATA_DIR "${CMAKE_INSTALL_PREFIX}/share")
+set(PROJECT_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}")
 
 # Git repo info
 include(GitRepo)
@@ -150,7 +150,7 @@ list(APPEND pkg-module-spec "sqlite3 >= 3.0.0")
 list(APPEND pkg-module-spec "gthread-2.0 >= 2.4.0")
 list(APPEND pkg-module-spec "libxml-2.0 >= 2.0.0")
 list(APPEND pkg-module-spec "libzip >= 1.0.1")
-list(APPEND pkg-module-spec "librsvg-2.0 >= 2.40")
+list(APPEND pkg-module-spec "librsvg-2.0 >= 2.46")
 
 # Profiling
 option (ENABLE_PROFILING "Link with gperftools" OFF)
@@ -178,7 +178,7 @@ if (ENABLE_QPDF)
     if (NOT qpdf_FOUND)
         # Before version 11.0 (e.g. for ubuntu 22.04 LTS), qpdf did not provide qpdfConfig.cmake (and friends)
         # We cannot only use pkg_search_module() though: it fails to link on MacOS
-        pkg_search_module(qpdf REQUIRED libqpdf)
+        pkg_search_module(qpdf REQUIRED "libqpdf >= 10.6.0")
         add_library(qpdf_tgt INTERFACE)
         target_link_libraries(qpdf_tgt INTERFACE ${qpdf_LIBRARIES})
         target_include_directories(qpdf_tgt INTERFACE ${qpdf_INCLUDE_DIRS})
@@ -206,6 +206,36 @@ if (ENABLE_GTK_SOURCEVIEW)
 else ()
     message(STATUS "Disable GtkSourceView TeX syntax highlighting")
 endif ()
+
+option(ENABLE_FLOAT_FROM_CHARS "Use floating point std::from_chars for parsing doubles" ON)
+include(CheckCXXSourceCompiles)
+check_cxx_source_compiles([[
+    #include <charconv>
+    #include <string_view>
+    #include <system_error>
+    int main() {
+        const std::string_view sv = "7.381450";
+        double val{};
+        auto [ptr, ec] = std::from_chars(sv.data(), sv.data() + sv.size(), val);
+        return ptr != (sv.data() + sv.size()) || ec != std::errc{};
+    }
+]] HAVE_FLOAT_FROM_CHARS)
+if (HAVE_FLOAT_FROM_CHARS)
+    if (ENABLE_FLOAT_FROM_CHARS)
+        message(STATUS "Enable floating point std::from_chars")
+    else()
+        message(WARNING "Floating point std::from_chars is disabled, but available. "
+                        "To avoid performance penalty, set ENABLE_FLOAT_FROM_CHARS to ON.")
+    endif()
+else()
+    if (ENABLE_FLOAT_FROM_CHARS)
+        message(SEND_ERROR "Floating point std::from_chars is not supported. Use a newer standard library, "
+                           "or set ENABLE_FLOAT_FROM_CHARS to OFF to fall back to g_ascii_strtod. "
+                           "std::from_chars offers higher performance and should be used whenever possible.")
+    else()
+        message(STATUS "Disable floating point std::from_chars")
+    endif()
+endif()
 
 # X11 link settings
 
@@ -292,10 +322,6 @@ set(DEV_ERRORLOG_DIR "errorlogs" CACHE STRING "Directory where errorlogfiles wil
 set(DEV_FILE_FORMAT_VERSION 4 CACHE STRING "File format version" FORCE)
 
 option(DEV_ENABLE_GCOV "Build with gcov support" OFF) # Enabel gcov support – expanded in src/
-option(DEV_CHECK_GTK3_COMPAT "Adds a few compiler flags to check basic GTK3 upgradeability support (still compiles for GTK2!)")
-if (DEV_CHECK_GTK3_COMPAT)
-    add_definitions(-DGTK_DISABLE_SINGLE_INCLUDES -DGDK_DISABLE_DEPRECATED -DGTK_DISABLE_DEPRECATED -DGSEAL_ENABLE)
-endif ()
 
 mark_as_advanced(FORCE
         DEV_TOOLBAR_CONFIG DEV_SETTINGS_XML_FILE DEV_PRINT_CONFIG_FILE DEV_METADATA_FILE
@@ -446,7 +472,7 @@ set(CPACK_DEBIAN_PACKAGE_RELEASE 2)
 set(CPACK_DEBIAN_PACKAGE_VERSION "${CPACK_PROJECT_VERSION}")
 set(CPACK_DEBIAN_PACKAGE_SECTION "graphics")
 set(CPACK_DEBIAN_PACKAGE_DEPENDS
-        "libglib2.0-0 (>= 2.32), libgtk-3-0 (>= 3.18), libpoppler-glib8 (>= 0.41.0), libxml2 (>= 2.0.0), libportaudiocpp0 (>= 12), libsndfile1 (>= 1.0.25), liblua5.3-0, libzip4 (>= 1.0.1) | libzip5, zlib1g, libc6, qpdf (>= 10.6.0)")
+        "libglib2.0-0 (>= 2.32), libgtk-3-0 (>= 3.18), libpoppler-glib8 (>= 0.41.0), libxml2 (>= 2.0.0), libportaudiocpp0 (>= 12), libsndfile1 (>= 1.0.25), liblua5.3-0 | liblua5.4-0, libzip4 (>= 1.0.1) | libzip5, zlib1g, libc6, qpdf (>= 10.6.0), libgtksourceview-4-0")
 set(CPACK_DEBIAN_PACKAGE_SUGGESTS "texlive-base, texlive-latex-extra")  # Latex tool
 # Use debian's arch scheme; we only care about x86/amd64 for now but feel free to add more
 if (${PACKAGE_ARCH} STREQUAL "x86_64")

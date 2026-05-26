@@ -1,9 +1,11 @@
 #include "PageTypeHandler.h"
 
 #include <algorithm>
+#include <string_view>
 #include <utility>
 
 #include "gui/GladeSearchpath.h"
+#include "util/PathUtil.h"
 #include "util/StringUtils.h"
 #include "util/XojMsgBox.h"
 #include "util/i18n.h"
@@ -48,7 +50,7 @@ PageTypeHandler::~PageTypeHandler() = default;
 auto PageTypeHandler::parseIni(fs::path const& filepath) -> bool {
     GKeyFile* config = g_key_file_new();
     g_key_file_set_list_separator(config, ',');
-    if (!g_key_file_load_from_file(config, char_cast(filepath.u8string().c_str()), G_KEY_FILE_NONE, nullptr)) {
+    if (!g_key_file_load_from_file(config, Util::toGFilename(filepath).c_str(), G_KEY_FILE_NONE, nullptr)) {
         g_key_file_free(config);
         return false;
     }
@@ -99,7 +101,7 @@ auto PageTypeHandler::getInfoOn(const PageType& pt) const -> const PageTypeInfo*
     return it == vector.end() ? nullptr : it->get();
 }
 
-auto PageTypeHandler::getPageTypeFormatForString(const std::string& format) -> PageTypeFormat {
+auto PageTypeHandler::getPageTypeFormatForString(std::string_view format) -> PageTypeFormat {
     if (format == "plain") {
         return PageTypeFormat::Plain;
     }
@@ -133,9 +135,9 @@ auto PageTypeHandler::getPageTypeFormatForString(const std::string& format) -> P
     if (format == ":image") {
         return PageTypeFormat::Image;
     }
-    g_warning("PageTypeHandler::getPageTypeFormatForString: unknown PageType: \"%s\". Replacing with "
+    g_warning("PageTypeHandler::getPageTypeFormatForString: unknown PageType: \"" SV_FMT "\". Replacing with "
               "PageTypeFormat::Plain",
-              format.c_str());
+              SV_ARG(format));
     return PageTypeFormat::Plain;
 }
 

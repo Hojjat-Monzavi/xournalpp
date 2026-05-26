@@ -49,6 +49,7 @@
 #include "gui/PdfFloatingToolbox.h"                 // for PdfFloatingToolbox
 #include "gui/SearchBar.h"                          // for SearchBar
 #include "gui/inputdevices/PositionInputData.h"     // for PositionInputData
+#include "gui/scroll/ScrollHandling.h"              // for ScrollHandling
 #include "model/Document.h"                         // for Document
 #include "model/Element.h"                          // for Element, ELEMENT_...
 #include "model/Layer.h"                            // for Layer, Layer::Index
@@ -129,12 +130,8 @@ void XojPageView::deleteViewBuffer() {
 
 auto XojPageView::containsPoint(int x, int y, bool local) const -> bool {
     if (!local) {
-        bool leftOk = this->getX() <= x;
-        bool rightOk = x <= this->getX() + this->getDisplayWidth();
-        bool topOk = this->getY() <= y;
-        bool bottomOk = y <= this->getY() + this->getDisplayHeight();
-
-        return leftOk && rightOk && topOk && bottomOk;
+        auto p = this->getPixelPosition();
+        return p.x <= x && x <= p.x + this->getDisplayWidth() && p.y <= y && y <= p.y + this->getDisplayHeight();
     }
 
 
@@ -153,9 +150,9 @@ auto XojPageView::searchTextOnPage(const std::string& text, size_t index, size_t
         if (pNr != npos) {
             Document* doc = xournal->getControl()->getDocument();
 
-            doc->lock();
+            doc->lock_shared();
             pdf = doc->getPdfPage(pNr);
-            doc->unlock();
+            doc->unlock_shared();
         }
         this->search = std::make_unique<SearchControl>(page, pdf);
         this->overlayViews.emplace_back(std::make_unique<xoj::view::SearchResultView>(
@@ -635,18 +632,11 @@ void XojPageView::onTapEvent(const PositionInputData& pos) {
 }
 
 auto XojPageView::showPdfToolbox(const PositionInputData& pos) -> void {
-    // Compute coords of the canvas relative to the application window origin.
-    gint wx = 0, wy = 0;
-    GtkWidget* widget = xournal->getWidget();
-    gtk_widget_translate_coordinates(widget, gtk_widget_get_toplevel(widget), 0, 0, &wx, &wy);
+    // Convert to the widget-coordinate system
+    auto p = xoj::util::Point{pos.x, pos.y} - this->xournal->getScrollHandling()->getPosition();
+    auto q = xoj::util::Point{round_cast<int>(p.x), round_cast<int>(p.y)} + this->getPixelPosition();
 
-    // Add the position of the current page view widget (relative to canvas origin)
-    // and add the input position (relative to the current page view widget).
-    wx += this->getX() + round_cast<gint>(pos.x);
-    wy += this->getY() + round_cast<gint>(pos.y);
-
-    auto* pdfToolbox = this->xournal->getControl()->getWindow()->getPdfToolbox();
-    pdfToolbox->show(wx, wy);
+    this->getXournal()->getControl()->getWindow()->getPdfToolbox()->show(q.x, q.y);
 }
 
 void XojPageView::deleteView(xoj::view::OverlayView* view) {
@@ -866,9 +856,11 @@ double XojPageView::getWidth() const { return page->getWidth(); }
 
 double XojPageView::getHeight() const { return page->getHeight(); }
 
-auto XojPageView::toWindowCoordinates(const xoj::util::Rectangle<double>& r) const -> xoj::util::Rectangle<double> {
+auto XojPageView::toWidgetCoordinates(const xoj::util::Rectangle<double>& r) const -> xoj::util::Rectangle<double> {
     double zoom = this->getZoom();
-    return {r.x * zoom + this->getX(), r.y * zoom + this->getY(), r.width * zoom, r.height * zoom};
+    auto p = this->getPixelPosition();
+    auto scrollDelta = this->getXournal()->getScrollHandling()->getPosition();
+    return {r.x * zoom + p.x - scrollDelta.x, r.y * zoom + p.y - scrollDelta.y, r.width * zoom, r.height * zoom};
 }
 
 void XojPageView::rerenderRect(double x, double y, double width, double height) {
@@ -954,7 +946,7 @@ void XojPageView::drawLoadingPage(cairo_t* cr) {
     cairo_text_extents(cr, txtLoading.c_str(), &ex);
     cairo_move_to(cr, (page->getWidth() - ex.width) / 2 - ex.x_bearing,
                   (page->getHeight() - ex.height) / 2 - ex.y_bearing);
-    cairo_show_text(cr, txtLoading.c_str());
+    cairo_text_path(cr, txtLoading.c_str());
 
     rerenderPage();
 }
@@ -991,9 +983,9 @@ bool XojPageView::displayLinkPopover(std::shared_ptr<XojPdfPage> page, double pa
             size_t pdfPage = dest->getPdfPage();
 
             Document* doc = xournal->getControl()->getDocument();
-            doc->lock();
+            doc->lock_shared();
             const size_t pageId = doc->findPdfPage(pdfPage);
-            doc->unlock();
+            doc->unlock_shared();
 
             GtkWidget* button{};
             if (pageId != npos) {
@@ -1032,8 +1024,10 @@ GtkWidget* XojPageView::makePopover(const XojPdfRectangle& rect, GtkWidget* chil
     GtkWidget* popover = gtk_popover_new(this->getXournal()->getWidget());
     gtk_popover_set_child(GTK_POPOVER(popover), child);
 
-    auto x = floor_cast<int>(this->getX() + rect.x1 * zoom);
-    auto y = floor_cast<int>(this->getY() + rect.y1 * zoom);
+    auto p = getPixelPosition();
+    auto q = this->getXournal()->getScrollHandling()->getPosition();
+    auto x = floor_cast<int>(p.x - q.x + rect.x1 * zoom);
+    auto y = floor_cast<int>(p.y - q.y + rect.y1 * zoom);
     auto w = ceil_cast<int>((rect.x2 - rect.x1) * zoom);
     auto h = ceil_cast<int>((rect.y2 - rect.y1) * zoom);
 
@@ -1091,25 +1085,9 @@ auto XojPageView::getSelectionColor() -> GdkRGBA { return Util::rgb_to_GdkRGBA(s
 
 auto XojPageView::getTextEditor() -> TextEditor* { return textEditor.get(); }
 
-auto XojPageView::getX() const -> int { return this->dispX; }
-
-void XojPageView::setX(int x) { this->dispX = x; }
-
-auto XojPageView::getY() const -> int { return this->dispY; }
-
-void XojPageView::setY(int y) { this->dispY = y; }
-
-void XojPageView::setMappedRowCol(int row, int col) {
-    this->mappedRow = row;
-    this->mappedCol = col;
+auto XojPageView::getPixelPosition() const -> xoj::util::Point<int> {
+    return this->xournal->getLayout()->getPixelCoordinatesOfEntry(this->gridCoordinates);
 }
-
-
-auto XojPageView::getMappedRow() const -> int { return this->mappedRow; }
-
-
-auto XojPageView::getMappedCol() const -> int { return this->mappedCol; }
-
 
 auto XojPageView::getPage() const -> const PageRef { return page; }
 
@@ -1157,10 +1135,6 @@ auto XojPageView::getSelectedText() const -> const Text* {
     return nullptr;
 }
 
-auto XojPageView::getRect() const -> Rectangle<double> {
-    return Rectangle<double>(getX(), getY(), getDisplayWidth(), getDisplayHeight());
-}
-
 void XojPageView::rectChanged(Rectangle<double>& rect) { rerenderRect(rect.x, rect.y, rect.width, rect.height); }
 
 void XojPageView::rangeChanged(Range& range) { rerenderRange(range); }
@@ -1192,14 +1166,12 @@ void XojPageView::elementsChanged(const std::vector<const Element*>& elements, c
 }
 
 void XojPageView::showFloatingToolbox(const PositionInputData& pos) {
-    Control* control = xournal->getControl();
+    // Convert to the widget-coordinate system
+    auto p = xoj::util::Point{pos.x, pos.y} - this->xournal->getScrollHandling()->getPosition();
+    auto q = xoj::util::Point{round_cast<int>(p.x), round_cast<int>(p.y)} + this->getPixelPosition();
 
-    gint wx = 0, wy = 0;
-    GtkWidget* widget = xournal->getWidget();
-    gtk_widget_translate_coordinates(widget, gtk_widget_get_toplevel(widget), 0, 0, &wx, &wy);
-
-    wx += round_cast<int>(pos.x) + this->getX();
-    wy += round_cast<int>(pos.y) + this->getY();
-
-    control->getWindow()->getFloatingToolbox()->show(wx, wy);
+    this->getXournal()->getControl()->getWindow()->getFloatingToolbox()->show(q.x, q.y);
 }
+
+void XojPageView::setGridCoordinates(xoj::util::Point<int> coords) { this->gridCoordinates = coords; }
+auto XojPageView::getGridCoordinates() const -> xoj::util::Point<int> { return this->gridCoordinates; }

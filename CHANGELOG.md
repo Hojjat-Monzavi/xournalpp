@@ -1,6 +1,123 @@
 # Changelog
 
-## 1.2.8+dev (Unreleased)
+## 1.3.4+dev (Unreleased)
+
+## 1.3.4
+
+* Fixed a crash when invoking the floating toolbox with the Laser pointer on (#7217)
+* Fixed sometimes missing page numbers in sidebar (#7254)
+* Improved scrolling/zooming performances (#7230)
+* Windows: Fixed URI activations (#7221)
+* Make default Plugins compatible with Lua 5.5 (#7306)
+* Updated translations
+
+## 1.3.3
+
+* Fix undo/redo crash with automatic page insertion (#7071)
+* Fix missing GtkSourceView dependency in Ubuntu packages (#7107)
+* Fix AppImage/Snap relative paths (#7148)
+* Silent errors when parsing some files are no longer silent (#7109)
+* Fix more UTF-8 conversion issues (#7113)
+* Report failure to open recent files (#7132)
+* Fix rendering of single-dot strokes (#7173)
+* Fix horizontal alignment of pages (#7139)
+* Fix toolbar item "Draw line" being wrongly enabled (#7189)
+* Improve zoom/scroll responsivity (#7199)
+* Updated translations
+
+## 1.3.2
+
+* Fix Windows UTF-8 conversion issues (#6888)
+* Fix sidebar layout when resizing and changing tab (#7060)
+* Fix missing lines/dots in graph/dotted backgrounds (#6968)
+* Fix change in new page behaviour with PDF background (#7055)
+* Fix crash on Windows when background PDF is missing (#7019)
+* Fix crash on Clipboard IO error (#7009)
+* Make Plugin openFile API comply with forceOpen parameter (#6961)
+* Fix CLI behaviour on error (#6956)
+* Restore GtkSourceView support (#6969)
+* Fix recoloring when light color is lighter (#6948)
+* Fix image orientation on Drag-n-Drop pasting (#6943)
+* Fix crashes when using touchscreen in Setting->Input panel (#6916)
+* Updated translations
+
+## 1.3.1
+
+* Restored the rendering of graph backgrounds used before the 1.3.0 release (#6894)
+* Fixed image loading on Windows (#6893)
+* Fixed various issues when using automatic display DPI detection, like clipboard pasting not working (#6887)
+* Fixed a bug where changing the color through the Lua API changed the alpha channel (#6889)
+* Fixed a crash when triggering automatic page addition by dragging a selection (#6868)
+* Fixed a crash when saving an empty text node (#6886)
+
+## 1.3.0
+
+This is a new minor version of Xournal++, including many new features and plethora of bug fixes from the community:
+
+* PDF exports now preserves the background PDF's inner structure (hyperlink, comments, ...) (#6364, #6545, #6831)
+* The color palette can now be selected in the preferences (#3767)
+* Grid snapping now follows the displayed grid for all background types (#6790)
+* New graph background with periodically thicker lines (#6751)
+* New laser pointer tool, writing ephemeral strokes (#6391, #6592)
+* Allow to use an external editor for LaTex entries (#6476, #6529)
+* Add the possibility of recoloring the screen output (e.g. for night mode or accessibility) (#6090, #6195, #6203)
+* Add the possibility of choose the PDF marker opacity (#5139)
+* Configurable behaviour in fullscreen or presentation modes (#5130)
+* Allow to optionally scroll beyond the page's edges (#4855)
+* Changes to the toolbar interface:
+  * The toolbars can now contain several instances of the same button (#5426)
+  * New toolbar item for enabling/disabling touch drawing (#6479)
+  * New toolbar item for showing/hiding the sidebar (#6239, #6708)
+* 4 new plugins are shipped with the app (#4528, #4884, #5836, #5837)
+* Major changes in the plugin interface:
+  * New API to interact with in-app actions (#6588)
+  * New API for font configuration (#6710)
+  * New API for managing the floating toolbox (#6682, #6788)
+  * New Toolbar entry for plugin text output (#6601)
+  * New API to fetch config, state or data folders of plugins (#6155)
+  * New API to change zoom levels (#5845)
+  * Replaced the API for file opening and saving (#5723)
+  * New Lua definition file to improve development environment (#5572)
+  * New API to interact with content (#4832, #4884, #5029, #5061, #5836, #5837, #6023, #6034, #6501)
+  * (MacOS and Windows) Our releases now ship LuaGObject for plugins to create their own interface (#6572)
+* The application is now wrapped in a launcher that will show error messages in case of a crash (#6563, #6777)
+* Add a device testing area in Settings->Input, for easier testing, configuration and bug reports (#6491)
+* Better unicode handling on Windows (#5640, #6757)
+* Faster rendering of strokes (#6385, #6685)
+* Automatic detection of screen DPI value (#6556)
+* Rewrite of selection logic, improving performances, and fixing many bugs and crashes related to it (#5317, #6361, #6664)
+* Improve display performances (#6642)
+* All parts of the interface are now open for translation (#5226)
+* Add possibility of adding a layer below the current layer (#6427)
+* New command line options: Open PNG files (#6402), Open PDF in attached mode (#5228)
+* (MacOS, Windows) Ship GTK-demo in our releases to help with bug reporting (#6192)
+* (Linux) Add caption to appdata (#6193)
+* More options in file naming (#6171)
+* (Unix) Metadata migration to $XDG_STATE_HOME (#5855, #6070)
+* Progress towards porting to GTK4 (#4763, #4796, #5078, #5079, #5481, #5500, #5585, #5591, #5602, #5630, #5631, #5644, #5646, #6440)
+* Consistently save new asset names as relative paths (#6540)
+* Many smaller improvements and bug fixes. Many code-base improvements.
+* Updated translations
+
+For downstream package maintainers: changes in cmake flags and compile-time dependencies
+* New flag `ENABLE_QPDF` (default=on) adds a compile-time dependency to qpdf (for better PDF exports).
+* New flag `ENABLE_AUDIO` (default=on). Disabling it removes the (preexisting) dependency to portaudio and sndfile.
+* New flag `MAN_COMPRESS` (default=on). Disabling it leaves the man pages uncompressed.
+* New flag `ENABLE_CPPTRACE` (default=on) will fetch and include cpp-trace (to generate crash reports).
+
+## 1.2.10
+
+* Fixed Continuous Integration
+* Updated translations
+
+## 1.2.9
+
+Bugfixes from various community contributors:
+
+* Fix display bug when running release version after having run the development version (#6681)
+* Fix Clipboard pasting issues (#6679)
+* Fix attached attribute on document load (#6678)
+* Prevent export from mistakingly overriding the background PDF (#6675)
 
 ## 1.2.8
 

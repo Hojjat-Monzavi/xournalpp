@@ -11,9 +11,9 @@ jobs:
   clang-format-checking:
     runs-on: ubuntu-latest
     env:
-      CLANG_FORMAT_VERSIONS: "19 18 17"
+      CLANG_FORMAT_VERSIONS: "22 21 20 19"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha }}

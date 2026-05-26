@@ -47,8 +47,16 @@ if [[ ! -d "$APPDIR" ]]; then
     tar xf "$TAR_NAME" --one-top-level="$APPDIR"/usr --strip=1
 fi
 
+# Ensure icon file exists - copy to the expected location
 ICON_FILE="$APPDIR"/usr/share/icons/hicolor/scalable/apps/com.github.xournalpp.xournalpp.svg
+mkdir -p "$(dirname "$ICON_FILE")"
+cp ui/pixmaps/com.github.xournalpp.xournalpp.svg "$ICON_FILE"
+
+# Ensure desktop file exists - copy to the expected location
 DESKTOP_FILE="$APPDIR"/usr/share/applications/com.github.xournalpp.xournalpp.desktop
+mkdir -p "$(dirname "$DESKTOP_FILE")"
+cp desktop/com.github.xournalpp.xournalpp.desktop.in "$DESKTOP_FILE"
+
 echo "Use the icon file $ICON_FILE and the desktop file $DESKTOP_FILE"
 
 filename_pattern="xournalpp-*$ARCH.AppImage.zsync"

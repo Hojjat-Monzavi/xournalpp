@@ -187,8 +187,8 @@ auto main(int argc, char* argv[]) -> int {
         xoj::util::OwnedCString stderrBuffer;
 #endif
 
-        std::cout << "Xournal++ started with PID: " << g_subprocess_get_identifier(p.get()) << std::endl;
-        errorlog << "Xournal++ started with PID: " << g_subprocess_get_identifier(p.get()) << std::endl;
+        std::cout << "AnkiXourj started with PID: " << g_subprocess_get_identifier(p.get()) << std::endl;
+        errorlog << "AnkiXourj started with PID: " << g_subprocess_get_identifier(p.get()) << std::endl;
 
         g_subprocess_communicate_utf8(p.get(), nullptr, nullptr, stdoutBuffer.contentReplacer(),
 #ifdef _WIN32  // On Windows, STDERR_MERGE does not work. See https://gitlab.gnome.org/GNOME/glib/-/issues/3723

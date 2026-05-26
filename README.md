@@ -1,13 +1,13 @@
-# Xournal++
+# AnkiXourj
 
 [![Build Status](https://dev.azure.com/xournalpp/xournalpp/_apis/build/status/CI?branchName=master)](https://dev.azure.com/xournalpp/xournalpp/_build/latest?definitionId=1&branchName=master)
 [![Join the chat at https://gitter.im/xournalpp/xournalpp](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/xournalpp/xournalpp?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-<img src="readme/main.png" width=550px% title="Xournal++ on GNU/Linux"/>
+<img src="readme/main.png" width=550px% title="AnkiXourj on GNU/Linux"/>
 
 ## Translations
 
-Would you like to see Xournal++ in your own language? Translators are welcome to contribute to Xournal++.
+Would you like to see AnkiXourj in your own language? Translators are welcome to contribute to AnkiXourj.
 
 You can contribute translations on [Crowdin](https://crowdin.com/project/xournalpp/)
 
@@ -17,10 +17,10 @@ Interested in translating a new language? Discuss on [Gitter](https://gitter.im/
 
 ## Features
 
-Xournal++ (/ˌzɚnl̟ˌplʌsˈplʌs/) is a hand note-taking software written in C++ with the target of flexibility, functionality and speed.
+AnkiXourj (/ˌzɚnl̟ˌplʌsˈplʌs/) is a hand note-taking software written in C++ with the target of flexibility, functionality and speed.
 Stroke recognizer and other parts are based on Xournal Code, which you can find at [SourceForge](http://sourceforge.net/projects/xournal/).
 
-Xournal++ features:
+AnkiXourj features:
 
 - Supports pressure-sensitive styluses and digital pen tables (e.g. Wacom, Huion, XP Pen, etc. tablets)
 - Paper backgrounds for note-taking, scratch paper, or whiteboarding
@@ -52,7 +52,7 @@ Xournal++ features:
 ## Mobile & web app
 
 From mid 2020 to May 2021, a Flutter-written mobile app for **Android**, **Chrome OS** and **iOS** (unreleased) and the **web**
-has been developed, which supports the file format and most of the basic features of Xournal++.
+has been developed, which supports the file format and most of the basic features of AnkiXourj.
 Unfortunately development has stalled and we have lost contact to the (single) developer. The web app is no longer available.
 You can still check out the [separate repository on GitLab](https://gitlab.com/TheOneWithTheBraid/xournalpp_mobile) or
 [Get it on Google Play](https://play.google.com/store/apps/details?id=online.xournal.mobile)
@@ -64,44 +64,44 @@ You can still check out the [separate repository on GitLab](https://gitlab.com/T
 
 ## GNU/Linux
 
-<img src="readme/main.png" width=100% title="Xournal++ on GNU/Linux"/>
+<img src="readme/main.png" width=100% title="AnkiXourj on GNU/Linux"/>
 
 </td><td>
 
 ## Windows 10
 
-<img src="readme/main-win.png" width=100% title="Xournal++ on Windows 10"/>
+<img src="readme/main-win.png" width=100% title="AnkiXourj on Windows 10"/>
 
 </td></tr><tr><td>
 
 ## macOS Catalina
 
-<img src="readme/main-mac.png" width=100% title="Xournal++ on macOS Catalina"/>
+<img src="readme/main-mac.png" width=100% title="AnkiXourj on macOS Catalina"/>
 
 </td><td>
 
-## Xournal++ Mobile on Chromium OS
+## AnkiXourj Mobile on Chromium OS
 
-<img src="https://gitlab.com/TheOneWithTheBraid/xournalpp_mobile/-/raw/master/fastlane/metadata/android/en_US/images/tenInchScreenshots/03.png" width=100% title="Xournal++ Mobile on Chromium OS"/>
+<img src="https://gitlab.com/TheOneWithTheBraid/xournalpp_mobile/-/raw/master/fastlane/metadata/android/en_US/images/tenInchScreenshots/03.png" width=100% title="AnkiXourj Mobile on Chromium OS"/>
 
 </td></tr><tr><td>
 
 ## Toolbar / Page Background / Layer
 
 Multiple page background, easy selectable on the toolbar
-<img src="readme/background.png" width=100% title="Changing the page background in Xournal++"/>
+<img src="readme/background.png" width=100% title="Changing the page background in AnkiXourj"/>
 
 </td><td>
 
 ## Layer sidebar and advanced layer selection
 
-<img src="readme/layer.png" width=100% title="Layers in Xournal++"/>
+<img src="readme/layer.png" width=100% title="Layers in AnkiXourj"/>
 
 </td></tr><tr><td>
 
 ## Multiple predefined and fully customizable toolbars
 
-<img src="readme/toolbar.png" width=100% title="Custom toolbars in Xournal++"/>
+<img src="readme/toolbar.png" width=100% title="Custom toolbars in AnkiXourj"/>
 
 </td></tr></table>
 
@@ -119,7 +119,7 @@ Try these out and give us some feedback.
 
 Here are a few under development that you can play with now:
 
-- <img src="readme/floatingtoolboxmbmenu.png"  title="Xournal++"/> Assign a mouse button or stylus button to bring up a toolbox of toolbars right under the cursor. You can also modify what is in the toolbox through the usual View → Toolbars → Customize although **it won't appear unless you've assigned a button in preferences: mouse or stylus** (or selected a toolbar configuration that uses it).
+- <img src="readme/floatingtoolboxmbmenu.png"  title="AnkiXourj"/> Assign a mouse button or stylus button to bring up a toolbox of toolbars right under the cursor. You can also modify what is in the toolbox through the usual View → Toolbars → Customize although **it won't appear unless you've assigned a button in preferences: mouse or stylus** (or selected a toolbar configuration that uses it).
 
   - This is an experimental feature because not everything you can put in the toolbox behaves. So be aware.
 
@@ -135,12 +135,12 @@ Here are a few under development that you can play with now:
 
 ## Installing
 
-The official releases of Xournal++ can be found on the
+The official releases of AnkiXourj can be found on the
 [Releases](https://github.com/xournalpp/xournalpp/releases) page. We provide
 binaries for Debian, Ubuntu, MacOS and Windows.
 For other GNU/Linux distributions (or older/newer ones), we also provide an
 AppImage that is binary compatible with any distribution released around or
-after Ubuntu 22.04. For installing Xournal++ Mobile on handheld devices, please check out [Xournal++ Mobile's instructions](https://gitlab.com/TheOneWithTheBraid/xournalpp_mobile#try-it-out)
+after Ubuntu 22.04. For installing AnkiXourj Mobile on handheld devices, please check out [AnkiXourj Mobile's instructions](https://gitlab.com/TheOneWithTheBraid/xournalpp_mobile#try-it-out)
 
 **A note for Ubuntu/Debian users**: The official binaries that we provide are
 only compatible with the _specific version of Debian or Ubuntu_ indicated by the

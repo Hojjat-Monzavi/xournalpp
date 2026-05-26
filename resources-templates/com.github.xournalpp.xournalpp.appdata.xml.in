@@ -1,21 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Copyright 2019 Tobias Mueller <tobiasmue@gnome.org>  -->
 <component type="desktop">
-  <id>com.github.xournalpp.xournalpp</id>
-  <translation type="gettext">xournalpp</translation>
-  <name>Xournal++</name>
+  <id>com.github.ankixourj.ankixourj</id>
+  <translation type="gettext">ankixourj</translation>
+  <name>AnkiXourj</name>
   <summary>Take handwritten notes</summary>
-  <developer_name>Xournalpp Developers</developer_name>
+  <developer_name>AnkiXourj Developers</developer_name>
   <description>
     <p>
-      Xournal++ is a hand note-taking software written in C++ with the target of
+      AnkiXourj is a hand note-taking software written in C++ with the target of
       flexibility, functionality and speed. Stroke recognizer and other parts are
       based on Xournal Code, which you can find at sourceforge. It supports GNU/Linux
       (e.g. Ubuntu, Debian, Arch, SUSE), macOS and Windows. Supports pen input
       from devices such as Wacom Tablets.
     </p>
     <p>
-      Xournal++ features:
+      AnkiXourj features:
     </p>
     <ul>
       <li>Supports pressure-sensitive styluses and digital pen tables (e.g. Wacom, Huion, XP Pen, etc. tablets)</li>

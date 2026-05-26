@@ -115,6 +115,7 @@ public:
     void print();
     void exportAsPdf();
     void exportAs();
+    void exportAsAnki();
     void quit(bool allowCancel = true);
 
     /**

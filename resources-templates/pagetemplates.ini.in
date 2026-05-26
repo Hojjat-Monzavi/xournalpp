@@ -12,6 +12,10 @@ format=ruled
 name=Ruled with vertical line
 format=lined
 
+[predefinedSingleLine]
+name=Single Line
+format=singleline
+
 [predefinedRightLined]
 name=Ruled with vertical line on the right
 format=lined

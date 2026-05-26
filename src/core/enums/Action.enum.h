@@ -38,6 +38,7 @@ enum class Action : size_t {
     SAVE_AS,
     EXPORT_AS_PDF,
     EXPORT_AS,
+    EXPORT_AS_ANKI,
     PRINT,
     QUIT,
 

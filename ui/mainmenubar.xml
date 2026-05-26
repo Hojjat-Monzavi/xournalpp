@@ -43,6 +43,10 @@
      <attribute name="action">win.export-as</attribute>
      <attribute name="accel">&lt;Ctrl&gt;e</attribute>
     </item>
+    <item>
+     <attribute name="label" translatable="yes">Export as Anki</attribute>
+     <attribute name="action">win.export-as-anki</attribute>
+    </item>
    </section>
    <section>
     <item>

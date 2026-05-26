@@ -45,7 +45,7 @@ void XojExportHandler::writeSolidBackground(XmlNode* background, ConstPageRef p)
 
     format = PageTypeHandler::getStringForPageTypeFormat(bgFormat);
     if (bgFormat != PageTypeFormat::Plain && bgFormat != PageTypeFormat::Ruled && bgFormat != PageTypeFormat::Lined &&
-        bgFormat != PageTypeFormat::Graph) {
+        bgFormat != PageTypeFormat::Graph && bgFormat != PageTypeFormat::SingleLine) {
         format = "plain";
     }
 

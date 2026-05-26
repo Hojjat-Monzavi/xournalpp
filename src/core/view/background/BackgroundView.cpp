@@ -2,6 +2,7 @@
 
 #include <glib.h>  // for g_warning
 
+#include "model/BackgroundConfig.h"                  // for BackgroundConfig
 #include "model/PageType.h"                          // for PageType, PageTy...
 #include "model/XojPage.h"                           // for XojPage
 #include "view/background/OneColorBackgroundView.h"  // for OneColorBackgrou...
@@ -15,6 +16,7 @@
 #include "PdfBackgroundView.h"                      // for PdfBackgroundView
 #include "PlainBackgroundView.h"                    // for PlainBackgroundView
 #include "RuledBackgroundView.h"                    // for RuledBackgroundView
+#include "SingleLineBackgroundView.h"               // for SingleLineBackgroundView
 #include "StavesBackgroundView.h"                   // for StavesBackground...
 #include "TransparentCheckerboardBackgroundView.h"  // for TransparentCheck...
 
@@ -27,25 +29,28 @@ auto BackgroundView::createRuled(double width, double height, Color backgroundCo
         case PageTypeFormat::Plain:
             return std::make_unique<PlainBackgroundView>(width, height, backgroundColor);
         case PageTypeFormat::Ruled:
-            res = std::make_unique<RuledBackgroundView>(width, height, backgroundColor, pt.config);
+            res = std::make_unique<RuledBackgroundView>(width, height, backgroundColor, BackgroundConfig{pt.config});
             break;
         case PageTypeFormat::Lined:
-            res = std::make_unique<LinedBackgroundView>(width, height, backgroundColor, pt.config);
+            res = std::make_unique<LinedBackgroundView>(width, height, backgroundColor, BackgroundConfig{pt.config});
             break;
         case PageTypeFormat::Graph:
-            res = std::make_unique<GraphBackgroundView>(width, height, backgroundColor, pt.config);
+            res = std::make_unique<GraphBackgroundView>(width, height, backgroundColor, BackgroundConfig{pt.config});
             break;
         case PageTypeFormat::Staves:
-            res = std::make_unique<StavesBackgroundView>(width, height, backgroundColor, pt.config);
+            res = std::make_unique<StavesBackgroundView>(width, height, backgroundColor, BackgroundConfig{pt.config});
             break;
         case PageTypeFormat::Dotted:
-            res = std::make_unique<DottedBackgroundView>(width, height, backgroundColor, pt.config);
+            res = std::make_unique<DottedBackgroundView>(width, height, backgroundColor, BackgroundConfig{pt.config});
             break;
         case PageTypeFormat::IsoGraph:
-            res = std::make_unique<IsoGraphBackgroundView>(width, height, backgroundColor, pt.config);
+            res = std::make_unique<IsoGraphBackgroundView>(width, height, backgroundColor, BackgroundConfig{pt.config});
             break;
         case PageTypeFormat::IsoDotted:
-            res = std::make_unique<IsoDottedBackgroundView>(width, height, backgroundColor, pt.config);
+            res = std::make_unique<IsoDottedBackgroundView>(width, height, backgroundColor, BackgroundConfig{pt.config});
+            break;
+        case PageTypeFormat::SingleLine:
+            res = std::make_unique<SingleLineBackgroundView>(width, height, backgroundColor, BackgroundConfig{pt.config});
             break;
         default:
             g_warning("BackgroundView::createForPage unknowntype: %d", static_cast<int>(pt.format));

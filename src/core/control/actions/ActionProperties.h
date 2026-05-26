@@ -114,6 +114,10 @@ struct ActionProperties<Action::EXPORT_AS> {
     static void callback(GSimpleAction*, GVariant*, Control* ctrl) { ctrl->exportAs(); }
 };
 template <>
+struct ActionProperties<Action::EXPORT_AS_ANKI> {
+    static void callback(GSimpleAction*, GVariant*, Control* ctrl) { ctrl->exportAsAnki(); }
+};
+template <>
 struct ActionProperties<Action::PRINT> {
     static void callback(GSimpleAction*, GVariant*, Control* ctrl) { ctrl->print(); }
 };

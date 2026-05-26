@@ -30,6 +30,7 @@ PageTypeHandler::PageTypeHandler(GladeSearchpath* gladeSearchPath) {
         addPageTypeInfo(_("Plain"), PageTypeFormat::Plain, "", types);
         addPageTypeInfo(_("Ruled"), PageTypeFormat::Ruled, "", types);
         addPageTypeInfo(_("Ruled with vertical line"), PageTypeFormat::Lined, "", types);
+        addPageTypeInfo(_("Single Line"), PageTypeFormat::SingleLine, "", types);
         addPageTypeInfo(_("Staves"), PageTypeFormat::Staves, "", types);
         addPageTypeInfo(_("Graph"), PageTypeFormat::Graph, "", types);
         addPageTypeInfo(_("Dotted"), PageTypeFormat::Dotted, "", types);
@@ -123,6 +124,9 @@ auto PageTypeHandler::getPageTypeFormatForString(const std::string& format) -> P
     if (format == "isograph") {
         return PageTypeFormat::IsoGraph;
     }
+    if (format == "singleline") {
+        return PageTypeFormat::SingleLine;
+    }
     if (format == ":pdf") {
         return PageTypeFormat::Pdf;
     }
@@ -153,6 +157,8 @@ auto PageTypeHandler::getStringForPageTypeFormat(const PageTypeFormat& format) -
             return "isodotted";
         case PageTypeFormat::IsoGraph:
             return "isograph";
+        case PageTypeFormat::SingleLine:
+            return "singleline";
         case PageTypeFormat::Pdf:
             return ":pdf";
         case PageTypeFormat::Image:

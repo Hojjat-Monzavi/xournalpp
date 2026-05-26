@@ -1,5 +1,5 @@
-; Xournal++ NSIS installation script for Windows
-; Author: The Xournal++ Team
+; AnkiXourj NSIS installation script for Windows
+; Author: The AnkiXourj Team
 
 ;--------------------------------
 ; NSIS setup
@@ -15,8 +15,8 @@ Unicode true
 !include nsDialogs.nsh
 
 ; Options for MultiUser plugin
-!define MULTIUSER_INSTALLMODE_INSTDIR "Xournal++"
-!define MULTIUSER_INSTALLMODE_INSTDIR_REGISTRY_KEY "Software\Xournal++"
+!define MULTIUSER_INSTALLMODE_INSTDIR "AnkiXourj"
+!define MULTIUSER_INSTALLMODE_INSTDIR_REGISTRY_KEY "Software\AnkiXourj"
 
 !define MULTIUSER_EXECUTIONLEVEL Highest ; Mixed-mode installer that can both be per-machine or per-user
 !define MULTIUSER_MUI
@@ -34,7 +34,7 @@ Function .onInit
 		SetRegView 64
 	${Else}
 		# 32 bit code
-		MessageBox MB_OK "Xournal++ requires 64-bit Windows. Sorry!"
+		MessageBox MB_OK "AnkiXourj requires 64-bit Windows. Sorry!"
 		Abort
 	${EndIf}
 
@@ -47,7 +47,7 @@ Function un.onInit
 		SetRegView 64
 	${Else}
 		# 32 bit code
-		MessageBox MB_OK "Xournal++ requires 64-bit Windows. Sorry!"
+		MessageBox MB_OK "AnkiXourj requires 64-bit Windows. Sorry!"
 		Abort
 	${EndIf}
 
@@ -55,7 +55,7 @@ Function un.onInit
 FunctionEnd
 
 ; Name and file
-Name "Xournal++ ${XOURNALPP_VERSION}"
+Name "AnkiXourj ${XOURNALPP_VERSION}"
 OutFile "${OUTPUT_INSTALLER_FILE}"
 
 ;--------------------------------
@@ -78,9 +78,9 @@ Var StartMenuFolder
 
 ;Start Menu Folder Page Configuration
 !define MUI_STARTMENUPAGE_REGISTRY_ROOT "SHCTX"
-!define MUI_STARTMENUPAGE_REGISTRY_KEY "Software\Xournal++"
+!define MUI_STARTMENUPAGE_REGISTRY_KEY "Software\AnkiXourj"
 !define MUI_STARTMENUPAGE_REGISTRY_VALUENAME "StartMenuEntry"
-!define MUI_STARTMENUPAGE_DEFAULTFOLDER "Xournal++"
+!define MUI_STARTMENUPAGE_DEFAULTFOLDER "AnkiXourj"
 
 !insertmacro MUI_PAGE_STARTMENU Application $StartMenuFolder
 
@@ -99,7 +99,7 @@ Var StartMenuFolder
 
 Var IsLegacyInstall
 Section "" SecUninstallPrevious
-	ReadRegStr $R0 SHCTX "Software\Xournal++" ""
+	ReadRegStr $R0 SHCTX "Software\AnkiXourj" ""
 	${If} $R0 == ""
 		; check for legacy installation
 		ReadRegStr $R0 HKCU "Software\Xournalpp" ""
@@ -124,13 +124,13 @@ Section "" SecUninstallPrevious
 			DetailPrint "Removing old start menu entries"
 
 			!insertmacro MUI_STARTMENU_GETFOLDER Application $StartMenuFolder
-			Delete "$SMPROGRAMS\$StartMenuFolder\Xournal++.lnk"
+			Delete "$SMPROGRAMS\$StartMenuFolder\AnkiXourj.lnk"
 			Delete "$SMPROGRAMS\$StartMenuFolder\Uninstall.lnk"
 			RMDir "$SMPROGRAMS\$StartMenuFolder"
-			
+
 			DetailPrint "Removing old registry keys"
-			DeleteRegKey HKLM "Software\Classes\Xournal++ file"
-			DeleteRegKey HKLM "Software\Classes\Xournal++ Template Files"
+			DeleteRegKey HKLM "Software\Classes\AnkiXourj file"
+			DeleteRegKey HKLM "Software\Classes\AnkiXourj Template Files"
 			DeleteRegKey HKLM "Software\Classes\Xournal file"
 			DeleteRegKey HKCU "Software\Xournalpp"
 		${EndIf}
@@ -156,7 +156,7 @@ SectionEnd
 	WriteRegStr SHCTX "Software\Classes\${PROGID}\DefaultIcon" "" '"${CMD}",0'
 	WriteRegStr SHCTX "Software\Classes\${PROGID}\shell" "" "open"
 	WriteRegStr SHCTX "Software\Classes\${PROGID}\shell\open\command" "" '"${CMD}" "%1"'
-	WriteRegStr SHCTX "Software\Classes\${PROGID}\shell\edit" "" "Edit with Xournal++"
+	WriteRegStr SHCTX "Software\Classes\${PROGID}\shell\edit" "" "Edit with AnkiXourj"
 	WriteRegStr SHCTX "Software\Classes\${PROGID}\shell\edit\command" "" '"${CMD}" "%1"'
 !macroend
 
@@ -186,19 +186,19 @@ SectionEnd
 ;-------------------------------
 ; Installer Sections
 
-Section "Associate .xopp files with Xournal++" SecFileXopp
-	!insertmacro SetDefaultExt ".xopp" "Xournal++.File"
+Section "Associate .xopp files with AnkiXourj" SecFileXopp
+	!insertmacro SetDefaultExt ".xopp" "AnkiXourj.File"
 SectionEnd
 
-Section "Associate .xopt files with Xournal++" SecFileXopt
-	!insertmacro SetDefaultExt ".xopt" "Xournal++.Template"
+Section "Associate .xopt files with AnkiXourj" SecFileXopt
+	!insertmacro SetDefaultExt ".xopt" "AnkiXourj.Template"
 SectionEnd
 
-Section "Associate .xoj files with Xournal++" SecFileXoj
-	!insertmacro SetDefaultExt ".xoj" "Xournal++.Xournal"
+Section "Associate .xoj files with AnkiXourj" SecFileXoj
+	!insertmacro SetDefaultExt ".xoj" "AnkiXourj.Xournal"
 SectionEnd
 
-Section "Xournal++" SecXournalpp
+Section "AnkiXourj" SecAnkixourj
 	; Required
 	SectionIn RO
 
@@ -208,47 +208,47 @@ Section "Xournal++" SecXournalpp
 	File /r ${SETUP_DIR}\*
 
 	; Set install information
-	WriteRegStr SHCTX "Software\Xournal++" "" '"$INSTDIR"'
+	WriteRegStr SHCTX "Software\AnkiXourj" "" '"$INSTDIR"'
 
 	; Set program information
 	WriteRegStr SHCTX "Software\Classes\Applications\xournalpp.exe" "" '"$INSTDIR\bin\xournalpp-wrapper.exe"'
-	WriteRegStr SHCTX "Software\Classes\Applications\xournalpp.exe" "FriendlyAppName" "Xournal++"
+	WriteRegStr SHCTX "Software\Classes\Applications\xournalpp.exe" "FriendlyAppName" "AnkiXourj"
 	WriteRegExpandStr SHCTX "Software\Classes\Applications\xournalpp.exe" "DefaultIcon" '"$INSTDIR\bin\xournalpp-wrapper.exe",0'
 	WriteRegStr SHCTX "Software\Microsoft\Windows\CurrentVersion\App Paths\xournalpp.exe" "" '"$INSTDIR\bin\xournalpp-wrapper.exe"'
 
 	; Add file type information
-	!insertmacro RegisterExt ".xopp" "Xournal++.File"
-	!insertmacro RegisterExt ".xopt" "Xournal++.Template"
-	!insertmacro RegisterExt ".xoj" "Xournal++.Xournal"
-	!insertmacro RegisterExt ".pdf" "Xournal++.AnnotatePdf"
+	!insertmacro RegisterExt ".xopp" "AnkiXourj.File"
+	!insertmacro RegisterExt ".xopt" "AnkiXourj.Template"
+	!insertmacro RegisterExt ".xoj" "AnkiXourj.Xournal"
+	!insertmacro RegisterExt ".pdf" "AnkiXourj.AnnotatePdf"
 	push $R0
 	StrCpy $R0 "$INSTDIR\bin\xournalpp-wrapper.exe"
-	!insertmacro AddProgId "Xournal++.File" "$R0" "Xournal++ file"
-	!insertmacro AddProgId "Xournal++.Template" "$R0" "Xournal++ template file"
-	!insertmacro AddProgId "Xournal++.Xournal" "$R0" "Xournal file"
-	!insertmacro AddProgId "Xournal++.AnnotatePdf" "$R0" "PDF file"
+	!insertmacro AddProgId "AnkiXourj.File" "$R0" "AnkiXourj file"
+	!insertmacro AddProgId "AnkiXourj.Template" "$R0" "AnkiXourj template file"
+	!insertmacro AddProgId "AnkiXourj.Xournal" "$R0" "Xournal file"
+	!insertmacro AddProgId "AnkiXourj.AnnotatePdf" "$R0" "PDF file"
 	pop $R0
 
 	; Create uninstaller
 	WriteUninstaller "$INSTDIR\Uninstall.exe"
 	; Add uninstall entry. See https://docs.microsoft.com/en-us/windows/win32/msi/uninstall-registry-key
-	WriteRegStr SHCTX "Software\Microsoft\Windows\CurrentVersion\Uninstall\Xournal++" "DisplayIcon" '"$INSTDIR\bin\xournalpp-wrapper.exe"'
-	WriteRegStr SHCTX "Software\Microsoft\Windows\CurrentVersion\Uninstall\Xournal++" "DisplayName" "Xournal++"
-	WriteRegStr SHCTX "Software\Microsoft\Windows\CurrentVersion\Uninstall\Xournal++" "DisplayVersion" "${XOURNALPP_VERSION}"
-	WriteRegStr SHCTX "Software\Microsoft\Windows\CurrentVersion\Uninstall\Xournal++" "Publisher" "The Xournal++ Team"
-	WriteRegStr SHCTX "Software\Microsoft\Windows\CurrentVersion\Uninstall\Xournal++" "URLInfoAbout" "https://xournalpp.github.io"
-	WriteRegStr SHCTX "Software\Microsoft\Windows\CurrentVersion\Uninstall\Xournal++" "InstallLocation" '"$INSTDIR"'
-	WriteRegStr SHCTX "Software\Microsoft\Windows\CurrentVersion\Uninstall\Xournal++" "UninstallString" '"$INSTDIR\Uninstall.exe"'
-	WriteRegDWORD SHCTX "Software\Microsoft\Windows\CurrentVersion\Uninstall\Xournal++" "NoModify" 1
-	WriteRegDWORD SHCTX "Software\Microsoft\Windows\CurrentVersion\Uninstall\Xournal++" "NoRepair" 1
+	WriteRegStr SHCTX "Software\Microsoft\Windows\CurrentVersion\Uninstall\AnkiXourj" "DisplayIcon" '"$INSTDIR\bin\xournalpp-wrapper.exe"'
+	WriteRegStr SHCTX "Software\Microsoft\Windows\CurrentVersion\Uninstall\AnkiXourj" "DisplayName" "AnkiXourj"
+	WriteRegStr SHCTX "Software\Microsoft\Windows\CurrentVersion\Uninstall\AnkiXourj" "DisplayVersion" "${XOURNALPP_VERSION}"
+	WriteRegStr SHCTX "Software\Microsoft\Windows\CurrentVersion\Uninstall\AnkiXourj" "Publisher" "The AnkiXourj Team"
+	WriteRegStr SHCTX "Software\Microsoft\Windows\CurrentVersion\Uninstall\AnkiXourj" "URLInfoAbout" "https://xournalpp.github.io"
+	WriteRegStr SHCTX "Software\Microsoft\Windows\CurrentVersion\Uninstall\AnkiXourj" "InstallLocation" '"$INSTDIR"'
+	WriteRegStr SHCTX "Software\Microsoft\Windows\CurrentVersion\Uninstall\AnkiXourj" "UninstallString" '"$INSTDIR\Uninstall.exe"'
+	WriteRegDWORD SHCTX "Software\Microsoft\Windows\CurrentVersion\Uninstall\AnkiXourj" "NoModify" 1
+	WriteRegDWORD SHCTX "Software\Microsoft\Windows\CurrentVersion\Uninstall\AnkiXourj" "NoRepair" 1
 
 	!insertmacro MUI_STARTMENU_WRITE_BEGIN Application
 		;Create shortcuts
 		CreateDirectory "$SMPROGRAMS\$StartMenuFolder"
-		CreateShortcut "$SMPROGRAMS\$StartMenuFolder\Xournal++.lnk" '"$INSTDIR\bin\xournalpp-wrapper.exe"'
+		CreateShortcut "$SMPROGRAMS\$StartMenuFolder\AnkiXourj.lnk" '"$INSTDIR\bin\xournalpp-wrapper.exe"'
 		CreateShortcut "$SMPROGRAMS\$StartMenuFolder\Uninstall.lnk" '"$INSTDIR\Uninstall.exe"'
-		
-		!insertmacro RefreshShellIconCreate "$SMPROGRAMS\$StartMenuFolder\Xournal++.lnk"
+
+		!insertmacro RefreshShellIconCreate "$SMPROGRAMS\$StartMenuFolder\AnkiXourj.lnk"
 	!insertmacro MUI_STARTMENU_WRITE_END
 
 	!insertmacro RefreshShellIcons
@@ -258,14 +258,14 @@ SectionEnd
 ; Descriptions
 
 ; Language strings
-LangString DESC_SecXournalpp ${LANG_ENGLISH} "Xournal++ executable"
-LangString DESC_SecFileXopp ${LANG_ENGLISH} "Open .xopp files with Xournal++"
-LangString DESC_SecFileXopt ${LANG_ENGLISH} "Open .xopt files with Xournal++"
-LangString DESC_SecFileXoj ${LANG_ENGLISH} "Open .xoj files with Xournal++"
+LangString DESC_SecAnkixourj ${LANG_ENGLISH} "AnkiXourj executable"
+LangString DESC_SecFileXopp ${LANG_ENGLISH} "Open .xopp files with AnkiXourj"
+LangString DESC_SecFileXopt ${LANG_ENGLISH} "Open .xopt files with AnkiXourj"
+LangString DESC_SecFileXoj ${LANG_ENGLISH} "Open .xoj files with AnkiXourj"
 
 ; Assign language strings to sections
 !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
-	!insertmacro MUI_DESCRIPTION_TEXT ${SecXournalpp} $(DESC_SecXournalpp)
+	!insertmacro MUI_DESCRIPTION_TEXT ${SecAnkixourj} $(DESC_SecAnkixourj)
 	!insertmacro MUI_DESCRIPTION_TEXT ${SecFileXopp} $(DESC_SecFileXopp)
 	!insertmacro MUI_DESCRIPTION_TEXT ${SecFileXopt} $(DESC_SecFileXopt)
 	!insertmacro MUI_DESCRIPTION_TEXT ${SecFileXoj} $(DESC_SecFileXoj)
@@ -279,7 +279,7 @@ Section "Uninstall"
 	SetRegView 64
 
 	; FIXME: ask if the user wants to uninstall the user or system wide install
-	ReadRegStr $0 HKCU "Software\Xournal++" ""
+	ReadRegStr $0 HKCU "Software\AnkiXourj" ""
 	${IF} $0 == ""
 		SetShellVarContext all
 	${ELSE}
@@ -287,19 +287,19 @@ Section "Uninstall"
 	${ENDIF}
 
 	; Remove registry keys
-	DeleteRegKey SHCTX "Software\Xournal++"
+	DeleteRegKey SHCTX "Software\AnkiXourj"
 	DeleteRegKey SHCTX "Software\Classes\Applications\xournalpp.exe"
 	DeleteRegKey SHCTX "Software\Microsoft\Windows\CurrentVersion\App Paths\xournalpp.exe"
-	DeleteRegKey SHCTX "Software\Microsoft\Windows\CurrentVersion\Uninstall\Xournal++"
+	DeleteRegKey SHCTX "Software\Microsoft\Windows\CurrentVersion\Uninstall\AnkiXourj"
 
-	!insertmacro DeleteProgId "Xournal++.File"
-	!insertmacro DeleteProgId "Xournal++.Template"
-	!insertmacro DeleteProgId "Xournal++.Xournal"
-	!insertmacro DeleteProgId "Xournal++.AnnotatePdf"
+	!insertmacro DeleteProgId "AnkiXourj.File"
+	!insertmacro DeleteProgId "AnkiXourj.Template"
+	!insertmacro DeleteProgId "AnkiXourj.Xournal"
+	!insertmacro DeleteProgId "AnkiXourj.AnnotatePdf"
 
 	; Clean up start menu
 	!insertmacro MUI_STARTMENU_GETFOLDER Application $StartMenuFolder
-	Delete "$SMPROGRAMS\$StartMenuFolder\Xournal++.lnk"
+	Delete "$SMPROGRAMS\$StartMenuFolder\AnkiXourj.lnk"
 	Delete "$SMPROGRAMS\$StartMenuFolder\Uninstall.lnk"
 	RMDir "$SMPROGRAMS\$StartMenuFolder"
 
@@ -311,6 +311,6 @@ Section "Uninstall"
 	Delete "$INSTDIR\Uninstall.exe"
 	RMDir "$INSTDIR"
 
-	!insertmacro RefreshShellIconDelete "$SMPROGRAMS\$StartMenuFolder\Xournal++.lnk"
+	!insertmacro RefreshShellIconDelete "$SMPROGRAMS\$StartMenuFolder\AnkiXourj.lnk"
 	!insertmacro RefreshShellIcons
 SectionEnd

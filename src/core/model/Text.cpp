@@ -14,6 +14,7 @@
 #include "util/Stacktrace.h"      // for Stacktrace
 #include "util/StringUtils.h"
 #include "util/raii/GObjectSPtr.h"
+#include "util/safe_casts.h"                      // for round_cast
 #include "util/serializing/ObjectInputStream.h"   // for ObjectInputStream
 #include "util/serializing/ObjectOutputStream.h"  // for ObjectOutputStream
 
@@ -31,14 +32,12 @@ auto Text::cloneText() const -> std::unique_ptr<Text> {
     text->font = this->font;
     text->text = this->text;
     text->setColor(this->getColor());
-    text->x = this->x;
-    text->y = this->y;
-    text->width = this->width;
-    text->height = this->height;
+    text->boundingBox = this->boundingBox;
     text->cloneAudioData(this);
     text->snappedBounds = this->snappedBounds;
     text->sizeCalculated = this->sizeCalculated;
     text->inEditing = this->inEditing;
+    text->wrapWidth = this->wrapWidth;
 
     return text;
 }
@@ -64,24 +63,19 @@ void Text::setText(std::string text) {
     sizeCalculated = false;
 }
 
+void Text::setWrap(double wrap) {
+    this->wrapWidth = wrap;
+    sizeCalculated = false;
+}
+
 void Text::calcSize() const {
     auto layout = createPangoLayout();
     pango_layout_set_text(layout.get(), this->text.c_str(), static_cast<int>(this->text.length()));
     int w = 0;
     int h = 0;
     pango_layout_get_size(layout.get(), &w, &h);
-    this->width = (static_cast<double>(w)) / PANGO_SCALE;
-    this->height = (static_cast<double>(h)) / PANGO_SCALE;
-    this->updateSnapping();
-}
-
-void Text::setWidth(double width) {
-    this->width = width;
-    this->updateSnapping();
-}
-
-void Text::setHeight(double height) {
-    this->height = height;
+    this->boundingBox.width = (static_cast<double>(w)) / PANGO_SCALE;
+    this->boundingBox.height = (static_cast<double>(h)) / PANGO_SCALE;
     this->updateSnapping();
 }
 
@@ -92,6 +86,9 @@ auto Text::createPangoLayout() const -> xoj::util::GObjectSPtr<PangoLayout> {
                                            xoj::util::adopt);
     pango_context_set_round_glyph_positions(c.get(), false);  // Avoid weird glyph positioning on small fonts
     xoj::util::GObjectSPtr<PangoLayout> layout(pango_layout_new(c.get()), xoj::util::adopt);
+
+    pango_layout_set_width(layout.get(),
+                           this->wrapWidth == NO_WRAP ? -1 : round_cast<int>(this->wrapWidth * PANGO_SCALE));
 
 #if PANGO_VERSION_CHECK(1, 48, 5)  // see https://gitlab.gnome.org/GNOME/pango/-/issues/499
     pango_layout_set_line_spacing(layout.get(), 1.0);
@@ -118,15 +115,19 @@ void Text::scale(double x0, double y0, double fx, double fy, double rotation,
         Stacktrace::printStacktrace();
     }
 
-    this->x -= x0;
-    this->x *= fx;
-    this->x += x0;
-    this->y -= y0;
-    this->y *= fy;
-    this->y += y0;
+    this->boundingBox.x -= x0;
+    this->boundingBox.x *= fx;
+    this->boundingBox.x += x0;
+    this->boundingBox.y -= y0;
+    this->boundingBox.y *= fy;
+    this->boundingBox.y += y0;
 
     double size = this->font.getSize() * fx;
     this->font.setSize(size);
+
+    if (this->wrapWidth != NO_WRAP) {
+        this->wrapWidth *= fx;
+    }
 
     sizeCalculated = false;
 }
@@ -146,6 +147,8 @@ void Text::serialize(ObjectOutputStream& out) const {
 
     font.serialize(out);
 
+    out.writeDouble(this->wrapWidth);
+
     out.endObject();
 }
 
@@ -158,12 +161,12 @@ void Text::readSerialized(ObjectInputStream& in) {
 
     font.readSerialized(in);
 
+    this->wrapWidth = in.readDouble();
+
     in.endObject();
 }
 
-void Text::updateSnapping() const {
-    this->snappedBounds = Rectangle<double>(this->x, this->y, this->width, this->height);
-}
+void Text::updateSnapping() const { this->snappedBounds = this->boundingBox; }
 
 auto Text::findText(const std::string& search) const -> std::vector<XojPdfRectangle> {
     size_t patternLength = search.length();
@@ -176,8 +179,9 @@ auto Text::findText(const std::string& search) const -> std::vector<XojPdfRectan
 
 
     std::string text = StringUtils::toLowerCase(this->text);
-
     std::string pattern = StringUtils::toLowerCase(search);
+
+    const auto& origin = this->getOrigin();
 
     std::vector<XojPdfRectangle> list;
 
@@ -185,12 +189,12 @@ auto Text::findText(const std::string& search) const -> std::vector<XojPdfRectan
         XojPdfRectangle mark;
         PangoRectangle rect = {0};
         pango_layout_index_to_pos(layout.get(), static_cast<int>(pos), &rect);
-        mark.x1 = (static_cast<double>(rect.x)) / PANGO_SCALE + this->getX();
-        mark.y1 = (static_cast<double>(rect.y)) / PANGO_SCALE + this->getY();
+        mark.x1 = (static_cast<double>(rect.x)) / PANGO_SCALE + origin.x;
+        mark.y1 = (static_cast<double>(rect.y)) / PANGO_SCALE + origin.y;
 
         pango_layout_index_to_pos(layout.get(), static_cast<int>(pos + patternLength - 1), &rect);
-        mark.x2 = (static_cast<double>(rect.x) + rect.width) / PANGO_SCALE + this->getX();
-        mark.y2 = (static_cast<double>(rect.y) + rect.height) / PANGO_SCALE + this->getY();
+        mark.x2 = (static_cast<double>(rect.x) + rect.width) / PANGO_SCALE + origin.x;
+        mark.y2 = (static_cast<double>(rect.y) + rect.height) / PANGO_SCALE + origin.y;
 
         list.push_back(mark);
     }

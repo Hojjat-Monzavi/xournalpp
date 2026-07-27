@@ -38,6 +38,8 @@ class PageType;
 class Point;
 class TexImage;
 class Text;
+class TextAlignment;
+class Link;
 
 namespace xoj::util {
 class InputStream;
@@ -98,8 +100,8 @@ private:
                    const LineStyle& lineStyle, fs::path filename, size_t timestamp) override;
     void setStrokePoints(std::vector<Point> pointVector, bool hasPressure) override;
     void finalizeStroke() override;
-    void addText(std::string font, double size, double x, double y, Color color, fs::path filename,
-                 size_t timestamp) override;
+    void addText(std::string font, double size, double x, double y, Color color, std::optional<double> wrap,
+                 fs::path filename, size_t timestamp) override;
     void setTextContents(std::string contents) override;
     void finalizeText() override;
     void addImage(double left, double top, double right, double bottom) override;
@@ -110,6 +112,11 @@ private:
     void setTexImageData(std::string data) override;
     void setTexImageAttachment(const fs::path& filename) override;
     void finalizeTexImage() override;
+
+    void addLink(TextAlignment align, std::string font, double size, double x, double y, Color color,
+                 std::string url) override;
+    void setLinkContent(std::string contents) override;
+    void finalizeLink() override;
 
     void logError(const std::string& error) override;
 
@@ -195,6 +202,7 @@ private:
     std::unique_ptr<Text> text;
     std::unique_ptr<Image> image;
     std::unique_ptr<TexImage> teximage;
+    std::unique_ptr<Link> link;
 
     DocumentHandler dHandler;
     std::unique_ptr<Document> doc;

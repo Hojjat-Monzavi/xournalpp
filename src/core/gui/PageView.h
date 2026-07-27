@@ -42,6 +42,7 @@ class Selector;
 class Settings;
 class Text;
 class TextEditor;
+class LinkHandler;
 class VerticalToolHandler;
 class XournalView;
 class Element;
@@ -102,6 +103,8 @@ public:
 
     void endText();
 
+    void endLink();
+
     void endSpline();
 
     bool searchTextOnPage(const std::string& text, size_t index, size_t* occurrences, XojPdfRectangle* matchRect);
@@ -152,9 +155,6 @@ public:
     /// Returns the position of the upper-left corner in Layout pixel-coordinates
     xoj::util::Point<int> getPixelPosition() const;
 
-    const TexImage* getSelectedTex() const;
-    const Text* getSelectedText() const;
-
 public:  // event handler
     bool onButtonPressEvent(const PositionInputData& pos);
     bool onButtonReleaseEvent(const PositionInputData& pos);
@@ -190,6 +190,8 @@ public:  // listener
 
 private:
     void startText(double x, double y);
+
+    void startLink();
 
     void drawLoadingPage(cairo_t* cr);
 
@@ -263,6 +265,9 @@ private:
     std::mutex drawingMutex;
 
     bool inEraser = false;
+    bool startEditingOnButtonRelease = false;
+    bool inLatex = false;
+    bool inLatexDoubleClick = false;
 
     /**
      * Vertical Space
@@ -291,4 +296,9 @@ private:
     friend class SelectObject;
     friend class PlayObject;
     friend class PdfFloatingToolbox;
+
+    /**
+     * The Link Editor
+     */
+    std::unique_ptr<LinkHandler> linkHandler;
 };

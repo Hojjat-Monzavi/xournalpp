@@ -478,6 +478,14 @@ void XournalView::endTextAllPages(XojPageView* except) const {
     }
 }
 
+void XournalView::endLinkAllPages(XojPageView* except) const {
+    for (auto& v: this->viewPages) {
+        if (except != v.get()) {
+            v->endLink();
+        }
+    }
+}
+
 void XournalView::endSplineAllPages() const {
     for (auto& v: this->viewPages) {
         v->endSpline();
@@ -552,7 +560,7 @@ void XournalView::zoomChanged() {
     ZoomControl* zoom = control->getZoomControl();
     this->getLayout()->recomputeCenteringPadding();
 
-    if (zoom->isZoomPresentationMode() || zoom->isZoomFitMode()) {
+    if (zoom->isZoomPresentationMode()) {
         scrollTo(this->getCurrentPage());
     } else if (zoom->isZoomSequenceActive()) {
         auto pos = zoom->getScrollPositionAfterZoom();

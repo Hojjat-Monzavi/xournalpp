@@ -19,6 +19,7 @@
 
 #include "control/AudioController.h"                // for AudioController
 #include "control/Control.h"                        // for Control
+#include "control/LatexController.h"                // for LatexController
 #include "control/ScrollHandler.h"                  // for ScrollHandler
 #include "control/SearchControl.h"                  // for SearchControl
 #include "control/Tool.h"                           // for Tool
@@ -36,6 +37,7 @@
 #include "control/tools/ImageSizeSelection.h"       // for ImageSizeSelection
 #include "control/tools/InputHandler.h"             // for InputHandler
 #include "control/tools/LaserPointerHandler.h"      // for LaserPointerHandler
+#include "control/tools/LinkHandler.h"              // for LinkHandler
 #include "control/tools/PdfElemSelection.h"         // for PdfElemSelection
 #include "control/tools/RectangleHandler.h"         // for RectangleHandler
 #include "control/tools/RulerHandler.h"             // for RulerHandler
@@ -168,23 +170,31 @@ auto XojPageView::searchTextOnPage(const std::string& text, size_t index, size_t
 
 void XojPageView::endText() { this->textEditor.reset(); }
 
+void XojPageView::endLink() { this->linkHandler.reset(); }
+
 void XojPageView::startText(double x, double y) {
     this->xournal->endTextAllPages(this);
     this->xournal->getControl()->getSearchBar()->showSearchBar(false);
 
     if (this->textEditor != nullptr) {
-        const Text* text = this->textEditor->getTextElement();
-        GdkRectangle matchRect = {gint(x), gint(y), 1, 1};
-        if (!text->intersectsArea(&matchRect)) {
+        if (const auto& box = this->textEditor->getContentBoundingBox(); !box.contains(x, y)) {
             endText();
         } else {
-            this->textEditor->mousePressed(x - text->getX(), y - text->getY());
+            this->textEditor->mousePressed(x, y);
         }
     }
 
     if (this->textEditor == nullptr) {
         this->textEditor = std::make_unique<TextEditor>(xournal->getControl(), page, xournal->getWidget(), x, y);
         this->overlayViews.emplace_back(std::make_unique<xoj::view::TextEditionView>(this->textEditor.get(), this));
+    }
+}
+
+void XojPageView::startLink() {
+    this->xournal->endLinkAllPages(this);
+    if (this->linkHandler == nullptr) {
+        this->linkHandler = std::make_unique<LinkHandler>(xournal);
+        this->overlayViews.emplace_back(this->linkHandler->createView(this));
     }
 }
 
@@ -404,6 +414,9 @@ auto XojPageView::onButtonPressEvent(const PositionInputData& pos) -> bool {
         }
     } else if (h->getToolType() == TOOL_TEXT) {
         startText(x, y);
+    } else if (h->getToolType() == TOOL_LATEX) {
+        /* The latex dialog will be opened only at the onButtonReleaseEvent. */
+        this->inLatex = true;
     } else if (h->getToolType() == TOOL_IMAGE) {
         // start selecting the size for the image
         this->imageSizeSelection = std::make_unique<ImageSizeSelection>(x, y);
@@ -472,14 +485,12 @@ auto XojPageView::onButtonDoublePressEvent(const PositionInputData& pos) -> bool
                 // could forget to do if we manually call startText
                 this->onButtonPressEvent(pos);
             } else if (elemType == ELEMENT_TEXIMAGE) {
-                Control* control = this->xournal->getControl();
-                if (elems.size() > 1) {
-                    // Deselect the other elements
-                    this->xournal->clearSelection();
-                    auto sel = SelectionFactory::createFromElementOnActiveLayer(control, getPage(), this, object);
-                    this->xournal->setSelection(sel.release());
-                }
-                control->runLatex();
+                // Open latex dialog... but only after the buttonReleaseEvent
+                this->inLatexDoubleClick = true;
+                // Make sure the buttonReleaseEvent corresponding to this device gets processed
+                currentSequenceDeviceId = pos.deviceId;
+            } else if (elemType == ELEMENT_LINK) {
+                this->startEditingOnButtonRelease = true;
             }
         }
     } else if (toolType == TOOL_TEXT) {
@@ -497,6 +508,8 @@ auto XojPageView::onButtonDoublePressEvent(const PositionInputData& pos) -> bool
             xoj_assert(hasNoViewOf(overlayViews, inputHandler.get()));
             this->inputHandler.reset();
         }
+    } else if (toolType == TOOL_LINK) {
+        this->startEditingOnButtonRelease = true;
     }
 
     return true;
@@ -555,12 +568,14 @@ auto XojPageView::onMotionNotifyEvent(const PositionInputData& pos) -> bool {
         XournalppCursor* cursor = getXournal()->getCursor();
         cursor->setInvisible(false);
 
-        const Text* text = this->textEditor->getTextElement();
-        this->textEditor->mouseMoved(x - text->getX(), y - text->getY());
+        this->textEditor->mouseMoved(x, y);
     } else if (this->laserPointer && this->laserPointer->onMotionNotifyEvent(pos, zoom)) {
         // used this event
     } else if (h->getToolType() == TOOL_ERASER && h->getEraserType() != ERASER_TYPE_WHITEOUT && this->inEraser) {
         this->eraser->erase(x, y);
+    } else if (h->getActiveTool()->getToolType() == TOOL_LINK) {
+        startLink();
+        this->linkHandler->highlight(this->getPage(), round_cast<int>(x), round_cast<int>(y), this);
     }
 
     return false;
@@ -648,6 +663,22 @@ void XojPageView::deleteView(xoj::view::OverlayView* view) {
 }
 
 auto XojPageView::onButtonReleaseEvent(const PositionInputData& pos) -> bool {
+    double zoom = xournal->getZoom();
+    auto x = round_cast<int>(pos.x / zoom);
+    auto y = round_cast<int>(pos.y / zoom);
+
+    if (this->startEditingOnButtonRelease) {
+        this->startEditingOnButtonRelease = false;
+        if (this->xournal->getSelection()) {
+            this->xournal->clearSelection();
+            ToolHandler* h = this->xournal->getControl()->getToolHandler();
+            h->selectTool(TOOL_LINK);
+            h->fireToolChanged();
+        }
+        startLink();
+        this->linkHandler->startEditing(this->getPage(), x, y);
+    }
+
     if (currentSequenceDeviceId != pos.deviceId) {
         // This event is not from the device which started the sequence: reject it
         return false;
@@ -669,6 +700,9 @@ auto XojPageView::onButtonReleaseEvent(const PositionInputData& pos) -> bool {
     } else if (auto tt = control->getToolHandler()->getToolType();
                this->laserPointer && (tt == TOOL_LASER_POINTER_PEN || tt == TOOL_LASER_POINTER_HIGHLIGHTER)) {
         this->laserPointer->onButtonReleaseEvent(pos, xournal->getZoom());
+    } else if (control->getToolHandler()->getToolType() == TOOL_LINK) {
+        startLink();
+        this->linkHandler->select(this->getPage(), x, y, pos.isControlDown(), this);
     }
 
     if (this->inEraser) {
@@ -677,6 +711,20 @@ auto XojPageView::onButtonReleaseEvent(const PositionInputData& pos) -> bool {
         doc->lock();
         this->eraser->finalize();
         doc->unlock();
+    }
+    if (this->inLatex) {
+        this->inLatex = false;
+        const double zoom = xournal->getZoom();
+        LatexController::insertLatex(this->page, control, pos.x / zoom, pos.y / zoom);
+    }
+    if (this->inLatexDoubleClick) {
+        this->inLatexDoubleClick = false;
+        this->xournal->clearSelection();
+        const double zoom = xournal->getZoom();
+        ToolHandler* toolHandler = this->xournal->getControl()->getToolHandler();
+        toolHandler->selectTool(TOOL_LATEX);
+        toolHandler->fireToolChanged();
+        LatexController::insertLatex(this->page, this->xournal->getControl(), pos.x / zoom, pos.y / zoom);
     }
 
     if (this->verticalSpace) {
@@ -1107,34 +1155,6 @@ auto XojPageView::getDisplayHeightDouble() const -> double {
     return this->page->getHeight() * this->xournal->getZoom();
 }
 
-auto XojPageView::getSelectedTex() const -> const TexImage* {
-    EditSelection* theSelection = this->xournal->getSelection();
-    if (!theSelection) {
-        return nullptr;
-    }
-
-    for (const Element* e: theSelection->getElementsView()) {
-        if (e->getType() == ELEMENT_TEXIMAGE) {
-            return dynamic_cast<const TexImage*>(e);
-        }
-    }
-    return nullptr;
-}
-
-auto XojPageView::getSelectedText() const -> const Text* {
-    EditSelection* theSelection = this->xournal->getSelection();
-    if (!theSelection) {
-        return nullptr;
-    }
-
-    for (const Element* e: theSelection->getElementsView()) {
-        if (e->getType() == ELEMENT_TEXT) {
-            return dynamic_cast<const Text*>(e);
-        }
-    }
-    return nullptr;
-}
-
 void XojPageView::rectChanged(Rectangle<double>& rect) { rerenderRect(rect.x, rect.y, rect.width, rect.height); }
 
 void XojPageView::rangeChanged(Range& range) { rerenderRange(range); }
@@ -1153,7 +1173,7 @@ void XojPageView::elementChanged(const Element* elem) {
      */
     const bool noRerender = inputHandler && elem == inputHandler->getStroke() &&
                             page->getSelectedLayerId() == page->getLayerCount() &&
-                            getVisiblePart().contains(elem->boundingRect());
+                            getVisiblePart().contains(elem->getBoundingBox());
     if (!noRerender) {
         rerenderElement(elem);
     }

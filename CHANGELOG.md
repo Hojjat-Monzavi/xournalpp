@@ -1,6 +1,36 @@
 # Changelog
 
-## 1.3.4+dev (Unreleased)
+## 1.3.6+dev (Unreleased)
+
+## 1.3.6
+
+* Fixed several issues with button configuration (#7526)
+* Added mutex locks for lua write functions (#7551)
+* Updated Debian dependency for libxml2 (#7418,#7578)
+* Added Ubuntu 26.04 (resolute) build target (#7450)
+* Fixed enable/disable copy/cut actions when selecting text in TextEdition (#7575)
+* Fixed data-race related segfault in RenderJob::renderToBuffer() (#7581)
+* Fixed "System default" audio device resolving to null device instead of default (#7591)
+* Fixed compilation warnings (#7600)
+* Fixed several issues with the "Add Pdf Page" dialog (#7592,#7602)
+* Updated translations
+
+## 1.3.5
+
+* Fixed crash when exiting after playing sound (#7352)
+* Fixed some button-to-tools configuration issues (#7365)
+* Fixed crash involving page background selection (#7347)
+* Added multidevice support for X11 palm rejection (#7336)
+* Reduced PDF cache retention for off-screen pages (#7384)
+* Fixed moving display when selecting "Fit to Screen" (#7427)
+* Fixed disabled "Merge layer" menu entry (#7415)
+* Fixed a concurrency crash when using layers (#7415)
+* Improved setting up environment on MacOS (#7358)
+* Fixed typos in some displayed strings (#7498)
+* Fixed "Missing background" display when missing PDF page (#7485)
+* Bumped dependency versions on MacOS and Windows (#7343, #7441)
+* Added Georgian translations
+* Updated translations
 
 ## 1.3.4
 

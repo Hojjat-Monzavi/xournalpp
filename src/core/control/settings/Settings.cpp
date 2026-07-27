@@ -431,6 +431,8 @@ void Settings::parseItem(xmlDocPtr doc, xmlNodePtr cur) {
         this->zoomStep = tempg_ascii_strtod(reinterpret_cast<const char*>(value), nullptr);
     } else if (xmlStrcmp(name, reinterpret_cast<const xmlChar*>("zoomStepScroll")) == 0) {
         this->zoomStepScroll = tempg_ascii_strtod(reinterpret_cast<const char*>(value), nullptr);
+    } else if (xmlStrcmp(name, reinterpret_cast<const xmlChar*>("forceZoomToFitOnLoad")) == 0) {
+        this->forceZoomToFitOnLoad = xmlStrcmp(value, reinterpret_cast<const xmlChar*>("true")) == 0;
     } else if (xmlStrcmp(name, reinterpret_cast<const xmlChar*>("displayDpi")) == 0) {
         this->displayDpi = g_ascii_strtoll(reinterpret_cast<const char*>(value), nullptr, 10);
     } else if (xmlStrcmp(name, reinterpret_cast<const xmlChar*>("mainWndWidth")) == 0) {
@@ -764,7 +766,7 @@ void Settings::loadDeviceClasses() {
 void Settings::loadButtonConfig() {
     SElement& s = getCustomElement("buttonConfig");
 
-    for (int i = 0; i < BUTTON_COUNT; i++) {
+    for (size_t i = 0; i < BUTTON_COUNT; i++) {
         SElement& e = s.child(buttonToString(static_cast<Button>(i)));
         const auto& cfg = buttonConfig[i];
 
@@ -773,48 +775,44 @@ void Settings::loadButtonConfig() {
             ToolType type = toolTypeFromString(sType);
             cfg->action = type;
 
-            if (type == TOOL_PEN) {
-                string strokeType;
-                cfg->strokeType =
-                        e.getString("strokeType", strokeType) ? strokeTypeFromString(strokeType) : STROKE_TYPE_NONE;
-            }
-
-            if (type == TOOL_PEN || type == TOOL_HIGHLIGHTER) {
-                string drawingType;
-                if (e.getString("drawingType", drawingType)) {
-                    cfg->drawingType = drawingTypeFromString(drawingType);
+            if (type != TOOL_NONE) {
+                if (type == TOOL_PEN) {
+                    string strokeType;
+                    cfg->strokeType =
+                            e.getString("strokeType", strokeType) ? strokeTypeFromString(strokeType) : STROKE_TYPE_NONE;
                 }
 
-                string sSize;
-                if (e.getString("size", sSize)) {
-                    cfg->size = toolSizeFromString(sSize);
-                } else {
-                    // If not specified: do not change
-                    cfg->size = TOOL_SIZE_NONE;
-                }
-            }
-
-            if (type == TOOL_PEN || type == TOOL_HIGHLIGHTER || type == TOOL_TEXT) {
-                if (int iColor; e.getInt("color", iColor)) {
-                    cfg->color = Color(as_unsigned(iColor));
-                }
-            }
-
-            if (type == TOOL_ERASER) {
-                string sEraserMode;
-                if (e.getString("eraserMode", sEraserMode)) {
-                    cfg->eraserMode = eraserTypeFromString(sEraserMode);
-                } else {
-                    // If not specified: do not change
-                    cfg->eraserMode = ERASER_TYPE_NONE;
+                if (type == TOOL_PEN || type == TOOL_HIGHLIGHTER) {
+                    string drawingType;
+                    if (e.getString("drawingType", drawingType)) {
+                        cfg->drawingType = drawingTypeFromString(drawingType);
+                    }
                 }
 
-                string sSize;
-                if (e.getString("size", sSize)) {
-                    cfg->size = toolSizeFromString(sSize);
-                } else {
-                    // If not specified: do not change
-                    cfg->size = TOOL_SIZE_NONE;
+                if (type == TOOL_ERASER) {
+                    std::string sEraserMode;
+                    if (e.getString("eraserMode", sEraserMode)) {
+                        cfg->eraserMode = eraserTypeFromString(sEraserMode);
+                    } else {
+                        // If not specified: do not change
+                        cfg->eraserMode = ERASER_TYPE_NONE;
+                    }
+                }
+
+                if (xoj::tool::hasCapability(type, TOOL_CAP_SIZE)) {
+                    std::string sSize;
+                    if (e.getString("size", sSize)) {
+                        cfg->size = toolSizeFromString(sSize);
+                    } else {
+                        // If not specified: do not change
+                        cfg->size = TOOL_SIZE_NONE;
+                    }
+                }
+
+                if (xoj::tool::hasCapability(type, TOOL_CAP_COLOR)) {
+                    if (int iColor; e.getInt("color", iColor)) {
+                        cfg->color = Color(as_unsigned(iColor));
+                    }
                 }
             }
 
@@ -935,29 +933,33 @@ void Settings::saveButtonConfig() {
     SElement& s = getCustomElement("buttonConfig");
     s.clear();
 
-    for (int i = 0; i < BUTTON_COUNT; i++) {
+    for (size_t i = 0; i < BUTTON_COUNT; i++) {
         SElement& e = s.child(buttonToString(static_cast<Button>(i)));
         const auto& cfg = buttonConfig[i];
 
         ToolType const type = cfg->action;
         e.setString("tool", toolTypeToString(type).data());
 
-        if (type == TOOL_PEN) {
-            e.setString("strokeType", strokeTypeToString(cfg->strokeType).data());
-        }
+        if (type != TOOL_NONE) {
+            if (type == TOOL_PEN) {
+                e.setString("strokeType", strokeTypeToString(cfg->strokeType).data());
+            }
 
-        if (type == TOOL_PEN || type == TOOL_HIGHLIGHTER) {
-            e.setString("drawingType", drawingTypeToString(cfg->drawingType).data());
-            e.setString("size", toolSizeToString(cfg->size).data());
-        }
+            if (type == TOOL_PEN || type == TOOL_HIGHLIGHTER) {
+                e.setString("drawingType", drawingTypeToString(cfg->drawingType).data());
+            }
 
-        if (type == TOOL_PEN || type == TOOL_HIGHLIGHTER || type == TOOL_TEXT) {
-            e.setIntHex("color", int32_t(uint32_t(cfg->color)));
-        }
+            if (type == TOOL_ERASER) {
+                e.setString("eraserMode", eraserTypeToString(cfg->eraserMode).data());
+            }
 
-        if (type == TOOL_ERASER) {
-            e.setString("eraserMode", eraserTypeToString(cfg->eraserMode).data());
-            e.setString("size", toolSizeToString(cfg->size).data());
+            if (xoj::tool::hasCapability(type, TOOL_CAP_SIZE)) {
+                e.setString("size", toolSizeToString(cfg->size).data());
+            }
+
+            if (xoj::tool::hasCapability(type, TOOL_CAP_COLOR)) {
+                e.setIntHex("color", int32_t(uint32_t(cfg->color)));
+            }
         }
 
         // Touch device
@@ -1025,6 +1027,7 @@ void Settings::save() {
     SAVE_DOUBLE_PROP(edgePanMaxMult);
     SAVE_DOUBLE_PROP(zoomStep);
     SAVE_DOUBLE_PROP(zoomStepScroll);
+    SAVE_BOOL_PROP(forceZoomToFitOnLoad);
     SAVE_INT_PROP(displayDpi);
     SAVE_INT_PROP(mainWndWidth);
     SAVE_INT_PROP(mainWndHeight);
@@ -1980,6 +1983,18 @@ void Settings::setZoomStepScroll(double zoomStepScroll) {
 }
 
 auto Settings::getZoomStepScroll() const -> double { return this->zoomStepScroll; }
+
+void Settings::setForceZoomToFitOnLoad(bool force) {
+    if (this->forceZoomToFitOnLoad == force) {
+        return;
+    }
+
+    this->forceZoomToFitOnLoad = force;
+
+    save();
+}
+
+auto Settings::getForceZoomToFitOnLoad() const -> bool { return this->forceZoomToFitOnLoad; }
 
 void Settings::setEdgePanSpeed(double speed) {
     if (this->edgePanSpeed == speed) {

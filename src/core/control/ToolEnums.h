@@ -92,34 +92,38 @@ enum ToolType {
     TOOL_SELECT_PDF_TEXT_RECT = 22,
     TOOL_LASER_POINTER_PEN = 23,
     TOOL_LASER_POINTER_HIGHLIGHTER = 24,
+    TOOL_LINK = 25,
+    TOOL_LATEX = 26,
 
     TOOL_END_ENTRY
 };
-static constexpr std::array<std::string_view, 25> toolNames{"none",
-                                                            "pen",
-                                                            "eraser",
-                                                            "highlighter",
-                                                            "text",
-                                                            "image",
-                                                            "selectRect",
-                                                            "selectRegion",
-                                                            "selectMultiLayerRect",
-                                                            "selectMultiLayerRegion",
-                                                            "selectObject",
-                                                            "playObject",
-                                                            "verticalSpace",
-                                                            "hand",
-                                                            "drawRect",
-                                                            "drawEllipse",
-                                                            "drawArrow",
-                                                            "drawDoubleArrow",
-                                                            "drawCoordinateSystem",
-                                                            "showFloatingToolbox",
-                                                            "drawSpline",
-                                                            "selectPdfTextLinear",
-                                                            "selectPdfTextRect",
-                                                            "laserPointerPen",
-                                                            "laserPointerHighlighter"};
+static constexpr std::array<std::string_view, TOOL_END_ENTRY> toolNames{"none",
+                                                                        "pen",
+                                                                        "eraser",
+                                                                        "highlighter",
+                                                                        "text",
+                                                                        "image",
+                                                                        "selectRect",
+                                                                        "selectRegion",
+                                                                        "selectMultiLayerRect",
+                                                                        "selectMultiLayerRegion",
+                                                                        "selectObject",
+                                                                        "playObject",
+                                                                        "verticalSpace",
+                                                                        "hand",
+                                                                        "drawRect",
+                                                                        "drawEllipse",
+                                                                        "drawArrow",
+                                                                        "drawDoubleArrow",
+                                                                        "drawCoordinateSystem",
+                                                                        "showFloatingToolbox",
+                                                                        "drawSpline",
+                                                                        "selectPdfTextLinear",
+                                                                        "selectPdfTextRect",
+                                                                        "laserPointerPen",
+                                                                        "laserPointerHighlighter",
+                                                                        "link",
+                                                                        "latex"};
 
 auto isSelectToolType(ToolType type) -> bool;
 auto isSelectToolTypeSingleLayer(ToolType type) -> bool;
@@ -194,4 +198,7 @@ static constexpr auto strokeTypeToString(StrokeType type) -> std::string_view {
 namespace xoj::tool {
 /// \return Whether the provided tool is used for selecting objects on a PDF.
 bool isPdfSelectionTool(ToolType toolType);
+
+ToolCapabilities typeToCapabilities(ToolType type);
+static inline bool hasCapability(ToolType type, ToolCapabilities cap) { return typeToCapabilities(type) & cap; }
 }  // namespace xoj::tool

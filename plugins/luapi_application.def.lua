@@ -96,8 +96,8 @@ function app.openDialog(message, options, cb, error) end
 
 --- Allow to register menupoints and toolbar buttons. This needs to be called from initUi
 --- 
---- @param opts {menu: string, callback: string, toolbarID: string, mode:integer, accelerator:string} options (`mode`,
----  `toolbarID` and `accelerator` are optional)
+--- @param opts {menu: string, callback: string, toolbarID: string, mode:integer, accelerator:string, parentPath:string}
+---   options (`mode`, `toolbarID`, `accelerator` and `parentPath` are optional)
 --- @return {menuId:integer}
 --- 
 --- Example 1: app.registerUi({["menu"] = "HelloWorld", callback="printMessage", mode=1, accelerator="<Control>a"})
@@ -109,8 +109,16 @@ function app.openDialog(message, options, cb, error) end
 --- to a toolbar via toolbar customization or by editing the toolbar.ini file using the name "Plugin::CUSTOM_PEN_1"
 --- Note that in toolbar.ini the string "Plugin::" must always be prepended to the toolbarId specified in the plugin
 --- 
+--- Example 3: app.registerUi({menu="Document", callback="newDoc", parentPath="File/New"})
+--- registers a menu item "Document" under a submenu "File/New" in the Plugins menu.
+--- Use "/" to create nested submenus, e.g., parentPath="File/Export/PDF" creates File > Export > PDF hierarchy.
+--- 
 --- The mode and accelerator are optional. When specifying the mode, the callback function should have one parameter
 ---    that receives the mode. This is useful for callback functions that are shared among multiple menu entries.
+--- 
+--- The parentPath parameter creates submenu hierarchy. Without it, the menu item appears directly in the Plugins menu.
+--- With parentPath, the item is placed under a nested submenu path. For example, parentPath="Tools/Custom"
+--- creates "Plugins > [plugin name] > Tools > Custom > [menu item]".
 function app.registerUi(opts) end
 
 --- *
@@ -345,8 +353,8 @@ function app.addStrokes(opts) end
 ---   - allowUndoRedoAction string: Decides how the change gets introduced into the undoRedo action list "individual",
 --- "grouped" or "none"
 --- 
---- @param opts {texts:{text:string, font:{name:string, size:number}, color:integer, x:number, y:number}[],
---- allowUndoRedoAction:string}
+--- @param opts {texts:{text:string, font:{name:string, size:number}, color:integer, x:number, y:number,
+--- wrap:number|nil}[], allowUndoRedoAction:string}
 --- @return lightuserdata[] references to the created text elements
 --- 
 --- Parameters per textbox:
@@ -355,6 +363,7 @@ function app.addStrokes(opts) end
 ---   - color integer: RGB hex code for the text-color (default: color of text tool)
 ---   - x number: x-position of the box (upper left corner) (required)
 ---   - y number: y-position of the box (upper left corner) (required)
+---   - wrap number|nil: width of the wrap (default: no wrap)
 --- 
 --- Example:
 --- 
@@ -367,11 +376,12 @@ function app.addStrokes(opts) end
 ---     y = 50.0,
 ---   },
 ---   {
----     text="Testing",
+---     text="Testing some long text that may need wrapping",
 ---     font={name="Noto Sans Mono Medium", size=8.0},
 ---     color=0x0,
 ---     x = 150.0,
 ---     y = 50.0,
+---     wrap = 200.0,
 ---   },
 --- }
 function app.addTexts(opts) end
@@ -384,8 +394,8 @@ function app.addTexts(opts) end
 --- Is mostly inverse to app.addTexts (except getTexts may also retrieve the width/height/page/layer of the textbox)
 --- 
 --- @param type string "selection" or "layer" or "page" or "all"
---- @return {text:string, font:{name:string, size:number}, color:integer, x:number, y:number, width:number,
---- height:number, ref:lightuserdata, page:number|nil, layer:number|nil}[] texts
+--- @return {text:string, font:{name:string, size:number}, color:integer, x:number, y:number, wrap:number|nil,
+--- width:number, height:number, ref:lightuserdata, page:number|nil, layer:number|nil}[] texts
 --- 
 --- Required argument: type ("selection" or "layer" or "page" or "all")
 --- 
@@ -409,7 +419,7 @@ function app.addTexts(opts) end
 ---     layer = 1, -- Only present when called with the "all" or "page" argument
 ---   },
 ---   {
----     text = "Testing",
+---     text = "Testing some long text that may need wrapping",
 ---     font = {
 ---             name = "Noto Sans Mono Medium",
 ---             size = 8.0,
@@ -417,6 +427,7 @@ function app.addTexts(opts) end
 ---     color = 0x0,
 ---     x = 150.0,
 ---     y = 70.0,
+---     wrap = 200.0,
 ---     width = 55.0,
 ---     height = 23.0,
 ---     ref = userdata: 0x5f644c0701e8
@@ -426,6 +437,105 @@ function app.addTexts(opts) end
 --- }
 --- 
 function app.getTexts(type) end
+
+--- Adds url links as specified to the current layer.
+--- 
+--- Global parameters:
+---   - links table: array of link-parameter-tables
+---   - allowUndoRedoAction string: Decides how the change gets introduced into the undoRedo action list "individual",
+--- "grouped" or "none"
+--- 
+--- @param opts {links:{text:string, url:string, alignment:integer|nil, font:{name:string, size:number}, color:integer,
+--- x:number, y:number}[], allowUndoRedoAction:string}
+--- @return lightuserdata[] references to the created link elements
+--- 
+--- Parameters per link:
+---   - text string: displayed text (required)
+---   - url string: url this link refers to (required)
+---   - alignment integer: text alignment, use app.C.Alignment_* (default: app.C.Alignment_left = 0)
+---   - font table {name string, size number} (default: currently configured font/size from the settings)
+---   - color integer: RGB hex code for the text-color (default: color of text tool)
+---   - x number: x-position of the box (upper left corner) (required)
+---   - y number: y-position of the box (upper left corner) (required)
+--- 
+--- Example:
+--- 
+--- local refs = app.addLinks{links={
+---   {
+---     text="Xournal++ Website",
+---     url="https://xournalpp.github.io",
+---     alignment=app.C.Alignment_left,
+---     font={name="Noto Sans Mono Medium", size=8.0},
+---     color=0x1259b9,
+---     x = 50.0,
+---     y = 50.0,
+---   },
+---   {
+---     text="email address",
+---     url="mailto:admin@example.com",
+---     alignment=app.C.Alignment_center,
+---     font={name="Noto Sans Mono Medium", size=8.0},
+---     color=0x0,
+---     x = 150.0,
+---     y = 50.0,
+---   },
+--- }
+function app.addLinks(opts) end
+
+--- Returns a list of lua table of the url links (from current selection / current layer / current page / all pages).
+--- When called with "page" to retrieve all elements on the current page, it also adds a field "layer" for the
+--- layer containing the element, and when called with "all" it additionally adds a field "page" containing its page
+--- index together with its layer (all of them being indexed from 1).
+--- 
+--- Is mostly inverse to app.addLinks (except getLinks may also retrieve the width/height/page/layer of the link box)
+--- 
+--- @param type string "selection" or "layer" or "page" or "all"
+--- @return {text:string, url:string, alignment:integer, font:{name:string, size:number}, color:integer, x:number,
+--- y:number, width:number, height:number, ref:lightuserdata, page:number|nil, layer:number|nil}[] links
+--- 
+--- Required argument: type ("selection" or "layer" or "page" or "all")
+--- 
+--- Example: local links = app.getLinks("all")
+--- 
+--- possible return value:
+--- {
+---   {
+---     text = "Xournal++ Website",
+---     url  = "https://xournalpp.github.io",
+---     alignment = 0,  -- app.C.Alignment_left
+---     font = {
+---             name = "Noto Sans Mono Medium",
+---             size = 8.0,
+---            },
+---     color = 0x1259b9,
+---     x = 50.0,
+---     y = 50.0,
+---     width = 89.0,
+---     height = 16.0,
+---     ref = userdata: 0x5f644c0700d0
+---     page = 1, -- Only present when called with the "all" argument
+---     layer = 1, -- Only present when called with the "all" or "page" argument
+---   },
+---   {
+---     text = "email address",
+---     url  = "mailto:admin@example.com",
+---     alignment = 1 -- app.C.Alignment_center
+---     font = {
+---             name = "Noto Sans Mono Medium",
+---             size = 8.0,
+---            },
+---     color = 0x0,
+---     x = 150.0,
+---     y = 50.0,
+---     width = 69.0,
+---     height = 16.0,
+---     ref = userdata: 0x5f644c0701e8
+---     page = 2,
+---     layer = 1,
+---   },
+--- }
+--- 
+function app.getLinks(type) end
 
 --- Puts a Lua Table of the Strokes (from the selection tool / selected layer / selected page / all document) onto the
 --- stack. When called with "page" to retrieve all elements on the current page, it also adds a field "layer" for
@@ -1139,7 +1249,6 @@ function app.setFont(font) end
 ---| "audio-seek-backwards"
 ---| "select-font"
 ---| "font"
----| "tex"
 ---| "plugin-manager"
 ---| "help"
 ---| "demo"
@@ -1198,6 +1307,8 @@ app.C = {
     Tool_selectPdfTextRect = 22,
     Tool_laserPointerPen = 23,
     Tool_laserPointerHighlighter = 24,
+    Tool_link = 25,
+    Tool_latex = 26,
     EraserType_none = 0,
     EraserType_default = 1,
     EraserType_whiteout = 2,
@@ -1206,4 +1317,7 @@ app.C = {
     OrderChange_bringForward = 1,
     OrderChange_sendBackward = 2,
     OrderChange_sendToBack = 3,
+    Alignment_left = 0,
+    Alignment_center = 1,
+    Alignment_right = 2,
 }

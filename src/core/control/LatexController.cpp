@@ -30,6 +30,8 @@
 #include "model/TexImage.h"                  // for TexImage
 #include "model/Text.h"                      // for Text
 #include "model/XojPage.h"                   // for XojPage
+#include "undo/DeleteUndoAction.h"           // for DeleteUndoAction
+#include "undo/GroupUndoAction.h"            // for GroupUndoAction
 #include "undo/InsertUndoAction.h"           // for InsertUndoAction
 #include "undo/UndoRedoHandler.h"            // for UndoRedoHandler
 #include "util/Assert.h"                     // for xoj_assert
@@ -53,7 +55,6 @@ constexpr Color DARK_PREVIEW_BACKGROUND = Colors::black;
 LatexController::LatexController(Control* control):
         control(control),
         settings(control->getSettings()->latexSettings),
-        doc(control->getDocument()),
         texTmpDir(Util::getTmpDirSubfolder("tex")),
         generator(settings) {
     Util::ensureFolderExists(this->texTmpDir);
@@ -93,66 +94,6 @@ auto LatexController::findTexDependencies() -> LatexController::FindDependencySt
     }
 }
 
-/**
- * Find a selected tex element, and load it
- */
-void LatexController::findSelectedTexElement() {
-    std::shared_lock<Document> lock(*doc);
-    auto pageNr = this->control->getCurrentPageNo();
-    if (pageNr == npos) {
-        return;
-    }
-    this->view = this->control->getWindow()->getXournal()->getViewFor(pageNr);
-    if (view == nullptr) {
-        return;
-    }
-
-    // we get the selection
-    this->page = this->doc->getPage(pageNr);
-    this->layer = page->getSelectedLayer();
-
-    auto* tex = view->getSelectedTex();
-    this->selectedElem =
-            tex != nullptr ? static_cast<const Element*>(tex) : static_cast<const Element*>(view->getSelectedText());
-
-    if (this->selectedElem) {
-        // this will get the position of the Latex properly
-        EditSelection* theSelection = control->getWindow()->getXournal()->getSelection();
-        xoj::util::Rectangle<double> rect = theSelection->getSnappedBounds();
-        this->posx = rect.x;
-        this->posy = rect.y;
-
-        if (auto* img = dynamic_cast<const TexImage*>(this->selectedElem)) {
-            this->initialTex = img->getText();
-            this->temporaryRender = img->cloneTexImage();
-            this->isValidTex = true;
-        } else if (auto* txt = dynamic_cast<const Text*>(this->selectedElem)) {
-            this->initialTex = "\\text{" + txt->getText() + "}";
-        }
-        this->imgwidth = this->selectedElem->getElementWidth();
-        this->imgheight = this->selectedElem->getElementHeight();
-    } else {
-        // This is a new latex object, so here we pick a convenient initial location
-        const double zoom = this->control->getWindow()->getXournal()->getZoom();
-        Layout* layout = this->control->getWindow()->getXournal()->getLayout();
-
-        // Calculate coordinates (screen) of the center of the visible area
-        const auto visibleBounds = layout->getVisibleRect();
-        const double centerX = visibleBounds.x + 0.5 * visibleBounds.width;
-        const double centerY = visibleBounds.y + 0.5 * visibleBounds.height;
-
-        if (layout->getPageViewAt(round_cast<int>(centerX), round_cast<int>(centerY)) == this->view) {
-            // Pick the center of the visible area (converting from screen to page coordinates)
-            auto p = this->view->getPixelPosition();
-            this->posx = (centerX - p.x) / zoom;
-            this->posy = (centerY - p.y) / zoom;
-        } else {
-            // No better location, so just center it on the page (possibly out of viewport)
-            this->posx = this->page->getWidth() / 2;
-            this->posy = this->page->getHeight() / 2;
-        }
-    }
-}
 
 void LatexController::showTexEditDialog(std::unique_ptr<LatexController> ctrl) {
     LatexController* texCtrl = ctrl.get();
@@ -172,7 +113,7 @@ void LatexController::triggerImageUpdate(const string& texString) {
         return;
     }
 
-    Color textColor = control->getToolHandler()->getTool(TOOL_TEXT).getColor();
+    Color textColor = control->getToolHandler()->getTool(TOOL_LATEX).getColor();
 
     // Determine a background color that has enough contrast with the text color:
     if (Util::get_color_contrast(textColor, LIGHT_PREVIEW_BACKGROUND) > 0.5) {
@@ -284,14 +225,6 @@ bool LatexController::isUpdating() { return updating_cancellable; }
 
 void LatexController::updateStatus() { this->dlg->setCompilationStatus(isValidTex, !isUpdating(), texProcessOutput); }
 
-void LatexController::deleteOldImage() {
-    if (this->selectedElem) {
-        auto sel = SelectionFactory::createFromElementOnActiveLayer(control, page, view, selectedElem);
-        this->view->getXournal()->deleteSelection(sel.release());
-        this->selectedElem = nullptr;
-    }
-}
-
 auto LatexController::loadRendered(string renderedTex) -> std::unique_ptr<TexImage> {
     if (!this->isValidTex) {
         return nullptr;
@@ -317,11 +250,11 @@ auto LatexController::loadRendered(string renderedTex) -> std::unique_ptr<TexIma
         return nullptr;
     }
 
-    img->setX(posx);
-    img->setY(posy);
+    img->setOrigin(posx, posy);
     img->setText(std::move(renderedTex));
     if (std::abs(imgheight) > 1024 * std::numeric_limits<double>::epsilon()) {
-        double ratio = img->getElementWidth() / img->getElementHeight();
+        const auto& box = img->getBoundingBox();
+        double ratio = box.width / box.height;
         if (ratio == 0) {
             img->setWidth(imgwidth == 0 ? 10 : imgwidth);
         } else {
@@ -337,11 +270,45 @@ void LatexController::insertTexImage() {
     xoj_assert(this->isValidTex);
     xoj_assert(this->temporaryRender != nullptr);
 
-    this->control->clearSelectionEndText();
-    this->deleteOldImage();
+    Document* doc = this->control->getDocument();
 
-    control->getUndoRedoHandler()->addUndoAction(
-            std::make_unique<InsertUndoAction>(page, layer, this->temporaryRender.get()));
+    auto lock = std::shared_lock(*doc);
+    Layer* layer = page->getSelectedLayer();
+    XournalView* xournal = this->control->getWindow()->getXournal();
+    auto pageNr = xournal->getCurrentPage();
+    auto* view = xournal->getViewFor(pageNr);
+
+    if (view->getPage() != page) {
+        g_warning("Active page changed while you edited the tex code. Aborting.");
+        return;
+    }
+    lock.unlock();
+
+    this->control->clearSelectionEndText();
+    if (this->selectedElem) {
+        const auto undo = control->getUndoRedoHandler();
+        auto groupUndoAction = std::make_unique<GroupUndoAction>();
+        auto deleteUndoAction = std::make_unique<DeleteUndoAction>(page, false);
+        doc->lock();
+        auto [orig, elementIndex] = layer->removeElement(selectedElem);
+        doc->unlock();
+        if (elementIndex != Element::InvalidIndex) [[likely]] {
+            deleteUndoAction->addElement(layer, std::move(orig), elementIndex);
+        }
+        groupUndoAction->addAction(std::move(deleteUndoAction));
+
+        auto insertUndoAction = std::make_unique<InsertUndoAction>(page, layer, this->temporaryRender.get());
+        groupUndoAction->addAction(std::move(insertUndoAction));
+        undo->addUndoAction(std::move(groupUndoAction));
+        Range oldRange(selectedElem->getBoundingBox());
+        Range newRange(temporaryRender->getBoundingBox());
+        Range repaintRange = oldRange.unite(newRange);
+        page->fireRangeChanged(repaintRange);
+    } else {
+        control->getUndoRedoHandler()->addUndoAction(
+                std::make_unique<InsertUndoAction>(page, layer, this->temporaryRender.get()));
+    }
+
 
     // Select element
     auto selection =
@@ -354,7 +321,8 @@ void LatexController::cancelEditing() {
     this->control->clearSelectionEndText();
 }
 
-void LatexController::run(Control* ctrl) {
+
+void LatexController::insertLatex(PageRef page, Control* ctrl, double x, double y) {
     auto self = std::make_unique<LatexController>(ctrl);
     auto depStatus = self->findTexDependencies();
     if (!depStatus.success) {
@@ -362,6 +330,44 @@ void LatexController::run(Control* ctrl) {
         return;
     }
 
-    self->findSelectedTexElement();
+    self->page = page;
+
+    // Is there already a teximage at the click location? If yes, find the most recent one.
+    self->selectedElem = nullptr;
+    auto lock = std::shared_lock(*self->control->getDocument());
+    auto& el = page->getSelectedLayer()->getElements();
+    for (auto e = el.rbegin(); e != el.rend(); ++e) {
+        if ((*e)->getType() == ELEMENT_TEXIMAGE || (*e)->getType() == ELEMENT_TEXT) {
+            if ((*e)->hasBoundingBoxContaining(x, y)) {
+                self->selectedElem = (*e).get();
+                break;
+            }
+        }
+    }
+
+    if (self->selectedElem) {
+        xoj::util::Rectangle<double> rect = self->selectedElem->getSnappedBounds();
+        self->posx = rect.x;
+        self->posy = rect.y;
+
+        if (auto* img = dynamic_cast<const TexImage*>(self->selectedElem)) {
+            self->initialTex = img->getText();
+            self->temporaryRender = img->cloneTexImage();
+            self->isValidTex = true;
+        } else if (auto* txt = dynamic_cast<const Text*>(self->selectedElem)) {
+            self->initialTex = "\\text{" + txt->getText() + "}";
+        } else {
+            xoj_assert(false);
+        }
+
+        self->imgwidth = self->selectedElem->getBoundingBox().width;
+        self->imgheight = self->selectedElem->getBoundingBox().height;
+
+    } else {
+        self->posx = x;
+        self->posy = y;
+    }
+    lock.unlock();
+
     showTexEditDialog(std::move(self));
 }

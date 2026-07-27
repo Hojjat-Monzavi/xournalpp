@@ -492,7 +492,7 @@
     </item>
     <item>
      <attribute name="label" translatable="yes">Merge Layer Down</attribute>
-     <attribute name="action">win.merge-layer-down</attribute>
+     <attribute name="action">win.layer-merge-down</attribute>
      <attribute name="accel">&lt;Ctrl&gt;m</attribute>
     </item>
     <item>
@@ -553,6 +553,18 @@
      <attribute name="action">win.select-tool</attribute>
      <attribute name="target" type="t">4</attribute> <!-- TOOL_TEXT -->
      <attribute name="accel">&lt;Ctrl&gt;&lt;Shift&gt;t</attribute>
+    </item>
+    <item>
+     <attribute name="label" translatable="yes">_Link</attribute>
+     <attribute name="action">win.select-tool</attribute>
+     <attribute name="target" type="t">25</attribute> <!-- TOOL_LINK -->
+     <attribute name="accel">&lt;Ctrl&gt;&lt;Shift&gt;u</attribute>
+    </item>
+    <item>
+     <attribute name="label" translatable="yes">LaTe_X</attribute>
+     <attribute name="action">win.select-tool</attribute>
+     <attribute name="target" type="t">26</attribute> <!-- TOOL_LATEX -->
+     <attribute name="accel">&lt;Ctrl&gt;&lt;Shift&gt;x</attribute>
     </item>
     <item>
      <attribute name="label" translatable="yes">_Image</attribute>
@@ -855,11 +867,6 @@
      <attribute name="label" translatable="yes">Back</attribute>
      <attribute name="action">win.audio-seek-backwards</attribute>
      <attribute name="class">audio</attribute> <!-- Gets removed when audio is disabled -->
-    </item>
-    <item>
-     <attribute name="label" translatable="yes">Add/Edit TeX</attribute>
-     <attribute name="action">win.tex</attribute>
-     <attribute name="accel">&lt;Ctrl&gt;&lt;Shift&gt;x</attribute>
     </item>
    </section>
   </submenu>

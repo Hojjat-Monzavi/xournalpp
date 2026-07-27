@@ -4,8 +4,13 @@ on:
   pull_request:
     branches: [ "master", "release-*" ]
     paths:
-      - 'src/core/plugin/luapi_application.h'
+      - 'src/core/control/ToolEnums.h'
+      - 'src/core/control/tools/EditSelection.h'
+      - 'src/core/model/TextAlignment.h'
       - 'src/core/enums/generated/Action.NameMap.generated.h'
+      - 'src/core/plugin/luapi_application.h'
+      - 'plugins/luapi_application.def.lua'
+
 
 jobs:
   Test_Lua_definition:

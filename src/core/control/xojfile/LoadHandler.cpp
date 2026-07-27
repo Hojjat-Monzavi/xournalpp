@@ -30,6 +30,7 @@
 #include "model/Font.h"                 // for XojFont
 #include "model/Image.h"                // for Image
 #include "model/Layer.h"                // for Layer
+#include "model/Link.h"                 // for Link
 #include "model/PageType.h"             // for PageType, PageTypeFormat
 #include "model/Point.h"                // for Point
 #include "model/Stroke.h"               // for Stroke, StrokeCapStyle
@@ -349,17 +350,17 @@ void LoadHandler::finalizeStroke() {
     }
 }
 
-void LoadHandler::addText(std::string font, double size, double x, double y, Color color, fs::path filename,
-                          size_t timestamp) {
+void LoadHandler::addText(std::string font, double size, double x, double y, Color color, std::optional<double> wrap,
+                          fs::path filename, size_t timestamp) {
     xoj_assert(!this->text);
     this->text = std::make_unique<Text>();
 
     XojFont& f = this->text->getFont();
     f.setName(std::move(font));
     f.setSize(size);
-    this->text->setX(x);
-    this->text->setY(y);
+    this->text->setOrigin(x, y);
     this->text->setColor(color);
+    this->text->setWrap(wrap.value_or(Text::NO_WRAP));
 
     setAudioAttributes(*this->text, std::move(filename), timestamp);
 }
@@ -380,8 +381,7 @@ void LoadHandler::addImage(double left, double top, double right, double bottom)
     xoj_assert(!this->image);
     this->image = std::make_unique<Image>();
 
-    this->image->setX(left);
-    this->image->setY(top);
+    this->image->setOrigin(left, top);
     this->image->setWidth(right - left);
     this->image->setHeight(bottom - top);
 }
@@ -425,8 +425,7 @@ void LoadHandler::addTexImage(double left, double top, double right, double bott
     xoj_assert(!this->teximage);
     this->teximage = std::make_unique<TexImage>();
 
-    this->teximage->setX(left);
-    this->teximage->setY(top);
+    this->teximage->setOrigin(left, top);
     this->teximage->setWidth(right - left);
     this->teximage->setHeight(bottom - top);
 
@@ -453,6 +452,35 @@ void LoadHandler::finalizeTexImage() {
 
     this->layer->addElement(std::move(this->teximage));
 }
+
+void LoadHandler::addLink(TextAlignment align, std::string font, double size, double x, double y, Color color,
+                          std::string url) {
+    this->link = std::make_unique<Link>();
+
+    this->link->setAlignment(align);
+
+    this->link->setUrl(std::string(url.c_str()));
+
+    this->link->setOrigin(x, y);
+
+    XojFont& f = this->link->getFont();
+    f.setName(std::move(font));
+    f.setSize(size);
+    this->link->setColor(color);
+}
+
+void LoadHandler::setLinkContent(std::string contents) {
+    xoj_assert(this->link);
+
+    this->link->setText(std::move(contents));
+}
+
+void LoadHandler::finalizeLink() {
+    xoj_assert(this->link);
+
+    this->layer->addElement(std::move(this->link));
+}
+
 
 void LoadHandler::logError(const std::string& error) {
     g_warning("LoadHandler: %s", error.c_str());

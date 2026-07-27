@@ -26,6 +26,7 @@
 #include "model/Image.h"                       // for Image
 #include "model/Layer.h"                       // for Layer
 #include "model/LineStyle.h"                   // for LineStyle
+#include "model/Link.h"                        // for Link
 #include "model/PageType.h"                    // for PageType
 #include "model/Point.h"                       // for Point
 #include "model/Stroke.h"                      // for Stroke, StrokeCapStyle
@@ -189,9 +190,13 @@ void SaveHandler::visitLayer(XmlNode* page, const Layer* l) {
 
             text->setAttrib(xoj::xml_attrs::FONT_STR, f.getName().c_str());
             text->setAttrib(xoj::xml_attrs::SIZE_STR, f.getSize());
-            text->setAttrib(xoj::xml_attrs::X_COORD_STR, t->getX());
-            text->setAttrib(xoj::xml_attrs::Y_COORD_STR, t->getY());
+            const auto& origin = t->getOrigin();
+            text->setAttrib(xoj::xml_attrs::X_COORD_STR, origin.x);
+            text->setAttrib(xoj::xml_attrs::Y_COORD_STR, origin.y);
             text->setAttrib(xoj::xml_attrs::COLOR_STR, getColorStr(t->getColor()).c_str());
+            if (auto w = t->getWrap(); w != Text::NO_WRAP) {
+                text->setAttrib(xoj::xml_attrs::WRAP_STR, w);
+            }
 
             writeTimestamp(text, t);
         } else if (e->getType() == ELEMENT_IMAGE) {
@@ -201,20 +206,37 @@ void SaveHandler::visitLayer(XmlNode* page, const Layer* l) {
 
             image->setImage(i->getImage());
 
-            image->setAttrib(xoj::xml_attrs::LEFT_POS_STR, i->getX());
-            image->setAttrib(xoj::xml_attrs::TOP_POS_STR, i->getY());
-            image->setAttrib(xoj::xml_attrs::RIGHT_POS_STR, i->getX() + i->getElementWidth());
-            image->setAttrib(xoj::xml_attrs::BOTTOM_POS_STR, i->getY() + i->getElementHeight());
+            Range r(i->getBoundingBox());
+            image->setAttrib(xoj::xml_attrs::LEFT_POS_STR, r.minX);
+            image->setAttrib(xoj::xml_attrs::TOP_POS_STR, r.minY);
+            image->setAttrib(xoj::xml_attrs::RIGHT_POS_STR, r.maxX);
+            image->setAttrib(xoj::xml_attrs::BOTTOM_POS_STR, r.maxY);
         } else if (e->getType() == ELEMENT_TEXIMAGE) {
             auto* i = dynamic_cast<const TexImage*>(e);
             auto* image = new XmlTexNode(TAG_NAMES[TagType::TEXIMAGE], std::string(i->getBinaryData()));
             layer->addChild(image);
 
             image->setAttrib(xoj::xml_attrs::TEXT_STR, i->getText().c_str());
-            image->setAttrib(xoj::xml_attrs::LEFT_POS_STR, i->getX());
-            image->setAttrib(xoj::xml_attrs::TOP_POS_STR, i->getY());
-            image->setAttrib(xoj::xml_attrs::RIGHT_POS_STR, i->getX() + i->getElementWidth());
-            image->setAttrib(xoj::xml_attrs::BOTTOM_POS_STR, i->getY() + i->getElementHeight());
+            Range r(i->getBoundingBox());
+            image->setAttrib(xoj::xml_attrs::LEFT_POS_STR, r.minX);
+            image->setAttrib(xoj::xml_attrs::TOP_POS_STR, r.minY);
+            image->setAttrib(xoj::xml_attrs::RIGHT_POS_STR, r.maxX);
+            image->setAttrib(xoj::xml_attrs::BOTTOM_POS_STR, r.maxY);
+        } else if (e->getType() == ELEMENT_LINK) {
+            auto* l = dynamic_cast<const Link*>(e);
+            auto* link = new XmlTextNode(TAG_NAMES[TagType::LINK], l->getText());
+            layer->addChild(link);
+
+            const XojFont& f = l->getFont();
+
+            link->setAttrib(xoj::xml_attrs::ALIGN_STR, l->getAlignment());
+            link->setAttrib(xoj::xml_attrs::FONT_STR, f.getName().c_str());
+            link->setAttrib(xoj::xml_attrs::SIZE_STR, f.getSize());
+            const auto& origin = l->getOrigin();
+            link->setAttrib(xoj::xml_attrs::X_COORD_STR, origin.x);
+            link->setAttrib(xoj::xml_attrs::Y_COORD_STR, origin.y);
+            link->setAttrib(xoj::xml_attrs::COLOR_STR, getColorStr(l->getColor()).c_str());
+            link->setAttrib(xoj::xml_attrs::URL_STR, l->getUrl().c_str());
         }
     }
 }

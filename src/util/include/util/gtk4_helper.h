@@ -68,12 +68,14 @@ void gtk_menu_button_set_label(GtkMenuButton* button, const char* label);
 void gtk_button_set_child(GtkButton* button, GtkWidget* child);
 GtkWidget* gtk_button_get_child(GtkButton* button);
 void gtk_button_set_icon_name(GtkButton* button, const char* iconName);
+GtkWidget* gtk_button_new_from_icon_name(const char* iconName);
 
 /**** GtkPopover ****/
 
 GtkWidget* gtk_popover_new();
 void gtk_popover_set_child(GtkPopover* popover, GtkWidget* child);
 GtkWidget* gtk_popover_menu_new_from_model(GMenuModel* model);
+void gtk_popover_set_autohide(GtkPopover* popover, gboolean autohide);
 
 /**** GtkLabel ****/
 void gtk_label_set_wrap(GtkLabel* label, gboolean wrap);
@@ -101,3 +103,9 @@ GdkEvent* gtk_event_controller_get_current_event(GtkEventController*);
 /**** GtkEditable ****/
 const char* gtk_editable_get_text(GtkEditable* editable);
 void gtk_editable_set_text(GtkEditable* editable, const char* text);
+
+/**** GtkImage ****/
+GtkWidget* gtk_image_new_from_icon_name(const char* name);
+
+/**** GtkOverlay ****/
+void gtk_overlay_remove_overlay(GtkOverlay* overlay, GtkWidget* widget);

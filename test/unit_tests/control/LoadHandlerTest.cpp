@@ -27,12 +27,14 @@
 #include "control/xojfile/SaveHandler.h"
 #include "model/Element.h"
 #include "model/Image.h"
+#include "model/Link.h"
 #include "model/PageRef.h"
 #include "model/PageType.h"
 #include "model/Stroke.h"
 #include "model/StrokeStyle.h"
 #include "model/TexImage.h"
 #include "model/Text.h"
+#include "model/TextAlignment.h"
 #include "model/XojPage.h"
 #include "util/Color.h"
 #include "util/PathUtil.h"
@@ -110,10 +112,10 @@ static void testLoadStoreLoadHelper(const fs::path& filepath, double tol = 1e-8)
         const Element* a = elements1[i];
         const Element* b = elements2[i];
         EXPECT_EQ(a->getType(), b->getType());
-        EXPECT_TRUE(coordEq(a->getX(), b->getX()));
-        EXPECT_TRUE(coordEq(a->getY(), b->getY()));
-        EXPECT_TRUE(coordEq(a->getElementWidth(), b->getElementWidth()));
-        EXPECT_TRUE(coordEq(a->getElementHeight(), b->getElementHeight()));
+        EXPECT_TRUE(coordEq(a->getOrigin().x, b->getOrigin().x));
+        EXPECT_TRUE(coordEq(a->getOrigin().y, b->getOrigin().y));
+        EXPECT_TRUE(coordEq(a->getBoundingBox().width, b->getBoundingBox().width));
+        EXPECT_TRUE(coordEq(a->getBoundingBox().height, b->getBoundingBox().height));
         EXPECT_EQ(a->getColor(), b->getColor());
         switch (a->getType()) {
             case ELEMENT_STROKE: {
@@ -226,7 +228,7 @@ static void checkImageFormat(const Image* img, const char* formatName) {
     g_free(gdkFormatName);
 }
 
-static void checkText(const Layer* layer, size_t elementIndex, const std::string& text, Color color) {
+static void checkText(const Layer* layer, size_t elementIndex, const std::string& text, Color color, double wrap) {
     ASSERT_LT(elementIndex, layer->getElementsView().size());
     const auto* textElem = dynamic_cast<const Text*>(layer->getElementsView()[elementIndex]);
 
@@ -235,6 +237,7 @@ static void checkText(const Layer* layer, size_t elementIndex, const std::string
 
     EXPECT_EQ(textElem->getText(), text) << "Text at index " << elementIndex << " has incorrect contents";
     EXPECT_EQ(textElem->getColor(), color) << "Text at index " << elementIndex << " has the wrong color";
+    EXPECT_EQ(textElem->getWrap(), wrap) << "Text at index " << elementIndex << " has the wrong wrap width";
 }
 
 TEST(ControlLoadHandler, testLoad) {
@@ -449,11 +452,16 @@ TEST(ControlLoadHandler, testText) {
     ASSERT_EQ(size_t{1}, page->getLayerCount());
     const Layer* layer = page->getLayersView().front();
 
-    checkText(layer, 0, "red", Colors::red);
-    checkText(layer, 1, "blue", Colors::xopp_royalblue);
-    checkText(layer, 2, "green", Color(0xff00f000U));
-    checkText(layer, 3, "multiline\ntext", Colors::black);
-    checkText(layer, 4, " \n odd  whitespace\ttext\n\n", Colors::black);
+    checkText(layer, 0, "red", Colors::red, Text::NO_WRAP);
+    checkText(layer, 1, "blue", Colors::xopp_royalblue, Text::NO_WRAP);
+    checkText(layer, 2, "green", Color(0xff00f000U), Text::NO_WRAP);
+    checkText(layer, 3, "multiline\ntext", Colors::black, Text::NO_WRAP);
+    checkText(layer, 4, " \n odd  whitespace\ttext\n\n", Colors::black, Text::NO_WRAP);
+    checkText(layer, 5,
+              char_cast(u8"Xournal++ (/ˌzɚnl̟ˌplʌsˈplʌs/) is an open-source and cross-platform note-taking software "
+                        u8"that is fast, flexible, and functional. A modern rewrite and a more feature-rich version of "
+                        u8"the wonderful Xournal program."),
+              Colors::black, 130.13533);
 }
 
 TEST(ControlLoadHandler, testTextZipped) {
@@ -466,9 +474,9 @@ TEST(ControlLoadHandler, testTextZipped) {
     ASSERT_EQ(size_t{1}, page->getLayerCount());
     const Layer* layer = page->getLayersView().front();
 
-    checkText(layer, 0, "red", Colors::red);
-    checkText(layer, 1, "blue", Colors::xopp_royalblue);
-    checkText(layer, 2, "green", Color(0xff00f000U));
+    checkText(layer, 0, "red", Colors::red, Text::NO_WRAP);
+    checkText(layer, 1, "blue", Colors::xopp_royalblue, Text::NO_WRAP);
+    checkText(layer, 2, "green", Color(0xff00f000U), Text::NO_WRAP);
 }
 
 TEST(ControlLoadHandler, testImage) {
@@ -487,10 +495,10 @@ TEST(ControlLoadHandler, testImage) {
     ASSERT_NE(img, nullptr) << "Element should be an image";
     ASSERT_EQ(img->getType(), ELEMENT_IMAGE) << "Element should be an image";
 
-    EXPECT_DOUBLE_EQ(img->getX(), 41.637795);
-    EXPECT_DOUBLE_EQ(img->getY(), 164.94488);
-    EXPECT_NEAR(img->getElementWidth(), 512.0, 1e-5);
-    EXPECT_NEAR(img->getElementHeight(), 512.0, 1e-5);
+    EXPECT_DOUBLE_EQ(img->getOrigin().x, 41.637795);
+    EXPECT_DOUBLE_EQ(img->getOrigin().y, 164.94488);
+    EXPECT_NEAR(img->getBoundingBox().width, 512.0, 1e-5);
+    EXPECT_NEAR(img->getBoundingBox().height, 512.0, 1e-5);
 
     EXPECT_GT(img->getRawDataLength(), 0);
     EXPECT_NE(img->getRawData(), nullptr);
@@ -586,10 +594,10 @@ TEST(ControlLoadHandler, testLatex) {
 
     EXPECT_STREQ(teximage->getText().c_str(), "x^2") << "TeX image has wrong text contents";
 
-    EXPECT_DOUBLE_EQ(teximage->getX(), 14.937);
-    EXPECT_DOUBLE_EQ(teximage->getY(), 15.715);
-    EXPECT_DOUBLE_EQ(teximage->getElementWidth(), 20.126);
-    EXPECT_DOUBLE_EQ(teximage->getElementHeight(), 18.57);
+    EXPECT_DOUBLE_EQ(teximage->getOrigin().x, 14.937);
+    EXPECT_DOUBLE_EQ(teximage->getOrigin().y, 15.715);
+    EXPECT_DOUBLE_EQ(teximage->getBoundingBox().width, 20.126);
+    EXPECT_DOUBLE_EQ(teximage->getBoundingBox().height, 18.57);
 
     EXPECT_FALSE(teximage->getBinaryData().empty());
 }
@@ -785,4 +793,35 @@ TEST(ControlLoadHandler, testRelativePath) {
 
     saveReloadTest(fs::temp_directory_path());
     saveReloadTest(fs::current_path());
+}
+
+TEST(ControlLoadHandler, testUrlLink) {
+    auto doc = loadTestDocument(GET_TESTFILE(u8"load/links.xopp"));
+    ASSERT_TRUE(doc) << "Unable to load test file \"load/links.xopp\"";
+
+    EXPECT_EQ((size_t)1, doc->getPageCount());
+    ConstPageRef page = doc->getPage(0);
+
+    EXPECT_EQ((size_t)1, page->getLayerCount());
+    const auto* layer = page->getLayersView()[0];
+
+    auto elements = layer->getElementsView();
+    ASSERT_EQ((size_t)4, layer->getElementsView().size());
+
+    auto check_link = [&](size_t i, const auto* text, const auto* url, TextAlignment align) {
+        EXPECT_EQ(ELEMENT_LINK, elements[i]->getType());
+        auto* link = dynamic_cast<const Link*>(elements[i]);
+        ASSERT_NE(link, nullptr);
+        EXPECT_STREQ(link->getText().c_str(), char_cast(text));
+        EXPECT_STREQ(link->getUrl().c_str(), char_cast(url));
+        EXPECT_EQ(link->getAlignment(), align);
+    };
+
+    check_link(0, u8"Simple Link", u8"https://xournalpp.github.io", TextAlignment::LEFT);
+    check_link(1, u8"Multiline\nLink\nwith three lines",
+               u8"https://johndoe:secret@www.example.com:8080/documentation/index.html?p1=A&p2=B#ressource",
+               TextAlignment::CENTER);
+    check_link(2, u8"Chinese characters: 测试", u8"http://見.香港/", TextAlignment::LEFT);
+    check_link(3, u8"Other non-ASCII characters:\nHæuñßéř, dǒńg-bǎǐ, łúčný, qǐng-wèn, vò-địâ",
+               u8"mailto:françois.rené@café-crème.fr", TextAlignment::RIGHT);
 }

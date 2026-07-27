@@ -8,7 +8,9 @@
 #include <cairo.h>
 #include <gtest/gtest.h>
 
+#include "model/Link.h"
 #include "model/Stroke.h"
+#include "model/TextAlignment.h"
 #include "util/StringUtils.h"
 #include "util/serializing/BinObjectEncoding.h"
 #include "util/serializing/HexObjectEncoding.h"
@@ -84,6 +86,15 @@ std::string serializeUInt(uint32_t x) {
 std::string serializeStroke(Stroke& stroke) {
     ObjectOutputStream outStream(new BinObjectEncoding);
     stroke.serialize(outStream);
+    auto outStr = outStream.stealData();
+    auto resStr = std::string{outStr->str, outStr->len};
+    g_string_free(outStr, true);
+    return resStr;
+}
+
+std::string serializeLink(Link& link) {
+    ObjectOutputStream outStream(new BinObjectEncoding);
+    link.serialize(outStream);
     auto outStr = outStream.stealData();
     auto resStr = std::string{outStr->str, outStr->len};
     g_string_free(outStr, true);
@@ -351,6 +362,12 @@ void assertStrokeEquality(const Stroke& stroke1, const Stroke& stroke2) {
     for (size_t i = 0; i < points1.size(); ++i) { EXPECT_TRUE(points1[i].equalsPos(points2[i])); }
 }
 
+void assertLinkEquality(const Link& link1, const Link& link2) {
+    EXPECT_EQ(link1.getUrl(), link2.getUrl());
+    EXPECT_EQ(link1.getText(), link2.getText());
+    EXPECT_EQ(link1.getAlignment(), link2.getAlignment());
+}
+
 TEST(UtilObjectIOStream, testReadStroke) {
     std::vector<Stroke> strokes(9);
     // strokes[0]: empty stroke
@@ -403,6 +420,39 @@ TEST(UtilObjectIOStream, testReadStroke) {
         }
     } catch (const InputStreamException& e) {
         std::cerr << "InputStreamException testing stroke " << i << ": " << e.what() << std::endl;
+        FAIL();
+    }
+}
+
+TEST(UtilObjectIOStream, testReadLink) {
+    std::vector<Link> links(4);
+    // links[0]: default link
+
+    links[1].setText("Search engine");
+    links[1].setUrl("https://startpage.com");
+
+    links[2].setText("Multiline\nLink");
+    links[2].setUrl("mailto:john.doe@provider.com");
+    links[2].setAlignment(TextAlignment::CENTER);
+
+    links[3].setText("Chinese characters\n测试");
+    links[3].setUrl("https://http://見.香港/");
+    links[3].setAlignment(TextAlignment::RIGHT);
+
+    size_t i = 0;
+    try {
+        for (auto&& link: links) {
+            std::string out_string = serializeLink(link);
+            ObjectInputStream istream;
+            istream.read(out_string.c_str(), out_string.size());
+
+            Link in_link;
+            in_link.readSerialized(istream);
+            assertLinkEquality(link, in_link);
+            ++i;
+        }
+    } catch (const InputStreamException& e) {
+        std::cerr << "InputStreamException testing link " << i << ": " << e.what() << std::endl;
         FAIL();
     }
 }

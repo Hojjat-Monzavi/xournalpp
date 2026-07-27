@@ -1,5 +1,6 @@
 #include "AnkiExportJob.h"
 
+#include <algorithm> // For std::min
 #include <memory>   // for unique_ptr
 #include <utility>  // for move, pair
 #include <sstream>  // for stringstream
@@ -211,7 +212,6 @@ void AnkiExportJob::renderAndSavePageHalf(size_t pageId, size_t pageNo, double z
     doc->unlock();
 
     double pageWidth = page->getWidth();
-    // double pageHeight = page->getHeight(); // Comment out unused variable
 
     // Create a Cairo surface for the clipped portion
     cairo_surface_t* surface =
@@ -258,6 +258,9 @@ void AnkiExportJob::exportGraphics() {
         zoomRatio = ((double)pngQualityParameter.getValue()) / Util::DPI_NORMALIZATION_FACTOR;
     }
 
+    // Cap scale factor to prevent high rendering times and massive files
+    zoomRatio = std::min(zoomRatio, 1.25);
+
     DocumentView view;
     size_t currentMediaId = 0; // To generate unique Anki media IDs
 
@@ -272,15 +275,15 @@ void AnkiExportJob::exportGraphics() {
 
             double pageHeight = page->getHeight(); 
 
-            // Export Question Half
+            // Export Question Portion (Top 20%)
             fs::path questionFilename = tempPath / (std::to_string(currentMediaId++) + ".png");
-            renderAndSavePageHalf(pageId, pageId + 1, zoomRatio, view, questionFilename, 0, pageHeight / 2.0);
+            renderAndSavePageHalf(pageId, pageId + 1, zoomRatio, view, questionFilename, 0, pageHeight * 0.2);
             if (!lastError.empty()) return;
             mediaFiles.emplace_back(std::to_string(currentMediaId - 1), questionFilename);
 
-            // Export Answer Half
+            // Export Answer Portion (Bottom 80%)
             fs::path answerFilename = tempPath / (std::to_string(currentMediaId++) + ".png");
-            renderAndSavePageHalf(pageId, pageId + 1, zoomRatio, view, answerFilename, pageHeight / 2.0, pageHeight / 2.0);
+            renderAndSavePageHalf(pageId, pageId + 1, zoomRatio, view, answerFilename, pageHeight * 0.2, pageHeight * 0.8);
             if (!lastError.empty()) return;
             mediaFiles.emplace_back(std::to_string(currentMediaId - 1), answerFilename);
         }
@@ -321,10 +324,14 @@ void AnkiExportJob::createAnkiDb() {
         long long current_time_s = current_time_ms / 1000;
         long long creation_time_s = current_time_s - 1; // Set creation time slightly before mod time
 
+        // Generate dynamic Deck ID
+        long long deck_id = current_time_ms;
+        std::string deck_id_str = std::to_string(deck_id);
+
         // Create the collection configuration JSON
         json conf_json = {
-            {"activeDecks", json::array({1})},
-            {"curDeck", 1},
+            {"activeDecks", json::array({deck_id})},
+            {"curDeck", deck_id},
             {"newBury", true},
             {"newSpread", 0},
             {"collapseTime", 1200},
@@ -395,7 +402,7 @@ void AnkiExportJob::createAnkiDb() {
             {"mod", current_time_s},
             {"usn", -1},
             {"sortf", 0},
-            {"did", 1}, // Default deck ID
+            {"did", deck_id}, // Dynamic deck ID
             {"tmpls", tmpls_array},
             {"flds", fields_array},
             {"css", ".card { font-family: arial; font-size: 20px; text-align: center; color: black; background-color: white; }\n\n.night_mode .card { color: white; background-color: #212121; }\n"},
@@ -411,7 +418,7 @@ void AnkiExportJob::createAnkiDb() {
         json decks_json;
         json deck_item = {
             {"name", deckName},
-            {"id", 19834},
+            {"id", deck_id}, // Dynamic deck ID
             {"mod", current_time_s},
             {"usn", -1},
             {"type", "std"},
@@ -431,7 +438,7 @@ void AnkiExportJob::createAnkiDb() {
             {"lrn", 0},
             {"opts", json::object()}
         };
-        decks_json["1"] = deck_item;
+        decks_json[deck_id_str] = deck_item;
 
         // Create the deck configuration JSON
         json dconf_json;
@@ -527,18 +534,17 @@ void AnkiExportJob::createAnkiDb() {
                                   "'');"; // data
             sqlite_exec(db, note_sql);
 
-            // Create two cards for each note (front->back and back->front)
-            // Card 1: Front -> Back
+            // Create cards for each note
             long long card1_id = card_id_base + i;
             std::string card1_sql = "INSERT INTO cards VALUES (" +
                                    std::to_string(card1_id) + ", " + // id
                                    std::to_string(note_id) + ", " + // nid
-                                   "1, " + // did (deck id)
+                                   std::to_string(deck_id) + ", " + // did (dynamic deck id)
                                    "0, " + // ord (template 0)
                                    std::to_string(current_time_s) + ", " + // mod
                                    "-1, " + // usn
-                                   "0, " + // type (0=new, 1=learning, 2=review, 3=relearning)
-                                   "0, " + // queue (0=new, 1=learning, 2=review, 3=day learn, -1=suspended)
+                                   "0, " + // type
+                                   "0, " + // queue
                                    "0, " + // due
                                    "0, " + // ivl
                                    "0, " + // factor
@@ -643,4 +649,3 @@ void AnkiExportJob::afterRun() {
                                    GTK_MESSAGE_INFO);
     }
 }
-

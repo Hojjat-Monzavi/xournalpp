@@ -28,10 +28,10 @@ public:
     virtual void draw(cairo_t* cr) const override;
 
 protected:
-    double linePosition = -1;  // Y position of the line from config (using CFG_RASTER), negative means use default (middle of page)
+    double linePosition = -1;  // Y position of the line from config (using CFG_RASTER), negative means use default (20% of page)
 
-    constexpr static Color DEFAULT_LINE_COLOR = Colors::xopp_dodgerblue;
+    constexpr static Color DEFAULT_LINE_COLOR = Colors::xopp_lightpink;
     constexpr static Color ALT_DEFAULT_LINE_COLOR = Colors::xopp_darkslategray;
-    constexpr static double DEFAULT_LINE_WIDTH = 0.5;
+    constexpr static double DEFAULT_LINE_WIDTH = 1.5;
 };
 };  // namespace xoj::view
